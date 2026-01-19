@@ -1,0 +1,27 @@
+CREATE TABLE ParkingSpotEntity (
+    id TEXT NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL,
+    address TEXT NOT NULL,
+    latitude REAL NOT NULL,
+    longitude REAL NOT NULL,
+    plate_types TEXT NOT NULL,
+    capacity INTEGER,
+    source TEXT NOT NULL,
+    is_verified INTEGER NOT NULL DEFAULT 0,
+    description TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+selectAll:
+SELECT * FROM ParkingSpotEntity;
+
+selectById:
+SELECT * FROM ParkingSpotEntity WHERE id = ?;
+
+insert:
+INSERT OR REPLACE INTO ParkingSpotEntity(id, name, address, latitude, longitude, plate_types, capacity, source, is_verified, description, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+deleteAll:
+DELETE FROM ParkingSpotEntity;
