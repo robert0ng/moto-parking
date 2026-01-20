@@ -132,6 +132,53 @@ class SupabaseParkingDataSource(
                 }
             }
     }
+
+    override suspend fun isFavorite(userId: String, spotId: String): Boolean {
+        val result = supabaseClient
+            .from("user_favorites")
+            .select {
+                filter {
+                    eq("user_id", userId)
+                    eq("spot_id", spotId)
+                }
+            }
+            .decodeList<Map<String, String>>()
+        return result.isNotEmpty()
+    }
+
+    override suspend fun submitReport(userId: String, spotId: String, category: String, comment: String?) {
+        supabaseClient
+            .from("spot_reports")
+            .insert(
+                mapOf(
+                    "user_id" to userId,
+                    "spot_id" to spotId,
+                    "category" to category,
+                    "comment" to comment
+                )
+            )
+    }
+
+    override suspend fun checkIn(userId: String, spotId: String) {
+        supabaseClient
+            .from("check_ins")
+            .insert(
+                mapOf(
+                    "user_id" to userId,
+                    "spot_id" to spotId
+                )
+            )
+    }
+
+    override suspend fun getCheckInCount(spotId: String): Int {
+        val params = buildJsonObject {
+            put("p_spot_id", spotId)
+        }
+        return supabaseClient.postgrest.rpc(
+            function = "get_spot_check_in_count",
+            parameters = params
+        ).decodeSingle<Int>()
+    }
 }
 
 @Serializable

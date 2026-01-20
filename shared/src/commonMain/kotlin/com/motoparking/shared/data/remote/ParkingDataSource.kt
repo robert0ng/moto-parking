@@ -20,4 +20,8 @@ interface ParkingDataSource {
     suspend fun getUserFavorites(userId: String): List<ParkingSpotDto>
     suspend fun addToFavorites(userId: String, spotId: String)
     suspend fun removeFromFavorites(userId: String, spotId: String)
+    suspend fun isFavorite(userId: String, spotId: String): Boolean
+    suspend fun submitReport(userId: String, spotId: String, category: String, comment: String?)
+    suspend fun checkIn(userId: String, spotId: String)
+    suspend fun getCheckInCount(spotId: String): Int
 }

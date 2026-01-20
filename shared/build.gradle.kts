@@ -45,6 +45,7 @@ kotlin {
 
             // Supabase (using explicit version instead of BOM for KMP compatibility)
             implementation(libs.supabase.postgrest)
+            implementation(libs.supabase.auth)
 
             // KotlinX
             implementation(libs.kotlinx.datetime)

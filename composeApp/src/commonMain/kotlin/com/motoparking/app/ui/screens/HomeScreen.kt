@@ -3,6 +3,7 @@ package com.motoparking.app.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.TwoWheeler
@@ -14,12 +15,16 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.motoparking.app.ui.components.ProfileDialog
+import com.motoparking.app.ui.viewmodels.AuthViewModel
 import com.motoparking.app.util.DEFAULT_LOCATION
 import com.motoparking.app.util.Geocoder
+import com.motoparking.app.util.GoogleSignInResult
 import com.motoparking.app.util.Location
 import com.motoparking.app.util.LocationPermissionStatus
 import com.motoparking.app.util.LocationService
 import com.motoparking.app.util.RequestLocationPermission
+import org.koin.compose.viewmodel.koinViewModel
 
 enum class Screen {
     MAP, LIST
@@ -36,11 +41,16 @@ private fun formatRadius(meters: Int): String = when (meters) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    onSpotClick: (spotId: String) -> Unit = {}
+    onSpotClick: (spotId: String) -> Unit = {},
+    authViewModel: AuthViewModel = koinViewModel()
 ) {
     var currentScreen by remember { mutableStateOf(Screen.LIST) }
     var selectedRadius by remember { mutableStateOf(1000) }
     var showRadiusMenu by remember { mutableStateOf(false) }
+    var showProfileDialog by remember { mutableStateOf(false) }
+
+    // Auth state
+    val authState by authViewModel.uiState.collectAsState()
 
     // Location state
     val locationService = remember { LocationService() }
@@ -163,6 +173,17 @@ fun HomeScreen(
                             }
                         }
                     }
+                    // Profile button
+                    IconButton(onClick = { showProfileDialog = true }) {
+                        Icon(
+                            Icons.Default.AccountCircle,
+                            contentDescription = "個人資料",
+                            tint = if (authState.isAuthenticated)
+                                MaterialTheme.colorScheme.onPrimary
+                            else
+                                MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
+                        )
+                    }
                 }
             )
         },
@@ -220,6 +241,31 @@ fun HomeScreen(
                 }
             }
         }
+    }
+
+    // Profile Dialog
+    if (showProfileDialog) {
+        ProfileDialog(
+            authState = authState,
+            onGoogleSignInResult = { result ->
+                when (result) {
+                    is GoogleSignInResult.Success -> {
+                        authViewModel.signInWithGoogle(result.idToken, result.accessToken)
+                    }
+                    is GoogleSignInResult.Error -> {
+                        // Error is shown in the dialog
+                    }
+                    is GoogleSignInResult.Cancelled -> {
+                        // User cancelled, do nothing
+                    }
+                }
+            },
+            onSignOut = { authViewModel.signOut() },
+            onDismiss = {
+                showProfileDialog = false
+                authViewModel.clearError()
+            }
+        )
     }
 }
 

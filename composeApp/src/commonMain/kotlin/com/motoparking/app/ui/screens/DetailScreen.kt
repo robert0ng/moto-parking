@@ -18,7 +18,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.motoparking.app.ui.components.ProfileDialog
+import com.motoparking.app.ui.components.ReportDialog
+import com.motoparking.app.ui.viewmodels.AuthViewModel
 import com.motoparking.app.ui.viewmodels.DetailViewModel
+import com.motoparking.app.util.GoogleSignInResult
 import com.motoparking.app.util.openInMaps
 import com.motoparking.shared.domain.model.DataSource
 import com.motoparking.shared.domain.model.ParkingSpot
@@ -31,12 +35,41 @@ import org.koin.compose.viewmodel.koinViewModel
 fun DetailScreen(
     spotId: String,
     onBackClick: () -> Unit,
-    viewModel: DetailViewModel = koinViewModel()
+    viewModel: DetailViewModel = koinViewModel(),
+    authViewModel: AuthViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val authState by authViewModel.uiState.collectAsState()
+
+    // Show login dialog when auth is required
+    var showLoginDialog by remember { mutableStateOf(false) }
+    var showReportDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(spotId) {
         viewModel.loadSpot(spotId)
+    }
+
+    // Close report dialog on success
+    LaunchedEffect(uiState.reportSuccess) {
+        if (uiState.reportSuccess) {
+            showReportDialog = false
+            viewModel.clearReportState()
+        }
+    }
+
+    // When requiresAuth changes to true, show login dialog
+    LaunchedEffect(uiState.requiresAuth) {
+        if (uiState.requiresAuth) {
+            showLoginDialog = true
+            viewModel.clearAuthRequired()
+        }
+    }
+
+    // Refresh favorite status when auth state changes
+    LaunchedEffect(authState.isAuthenticated) {
+        if (authState.isAuthenticated) {
+            viewModel.refreshFavoriteStatus()
+        }
     }
 
     Scaffold(
@@ -58,12 +91,23 @@ fun DetailScreen(
                     actionIconContentColor = MaterialTheme.colorScheme.onPrimary
                 ),
                 actions = {
-                    // Favorite button placeholder (requires auth - Phase 3)
-                    IconButton(onClick = { /* TODO: Toggle favorite */ }) {
-                        Icon(
-                            imageVector = Icons.Default.FavoriteBorder,
-                            contentDescription = "加入收藏"
-                        )
+                    // Favorite button
+                    IconButton(
+                        onClick = { viewModel.toggleFavorite() },
+                        enabled = !uiState.isFavoriteLoading
+                    ) {
+                        if (uiState.isFavoriteLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                        } else {
+                            Icon(
+                                imageVector = if (uiState.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                contentDescription = if (uiState.isFavorite) "移除收藏" else "加入收藏"
+                            )
+                        }
                     }
                 }
             )
@@ -95,12 +139,60 @@ fun DetailScreen(
                                 label = spot.name
                             )
                         },
-                        onReport = { /* TODO: Report - Phase 3 */ },
-                        onCheckIn = { /* TODO: Check-in - Phase 5 */ }
+                        onReport = {
+                            if (viewModel.isAuthenticated()) {
+                                showReportDialog = true
+                            } else {
+                                showLoginDialog = true
+                            }
+                        },
+                        onCheckIn = { viewModel.checkIn() },
+                        checkInCount = uiState.checkInCount,
+                        isCheckInLoading = uiState.isCheckInLoading
                     )
                 }
             }
         }
+    }
+
+    // Login dialog for auth-protected features
+    if (showLoginDialog) {
+        ProfileDialog(
+            authState = authState,
+            onGoogleSignInResult = { result ->
+                when (result) {
+                    is GoogleSignInResult.Success -> {
+                        authViewModel.signInWithGoogle(result.idToken, result.accessToken)
+                    }
+                    is GoogleSignInResult.Error -> {
+                        // Error is shown in the dialog
+                    }
+                    is GoogleSignInResult.Cancelled -> {
+                        // User cancelled
+                    }
+                }
+            },
+            onSignOut = { authViewModel.signOut() },
+            onDismiss = {
+                showLoginDialog = false
+                authViewModel.clearError()
+            }
+        )
+    }
+
+    // Report dialog
+    if (showReportDialog) {
+        ReportDialog(
+            onSubmit = { category, comment ->
+                viewModel.submitReport(category.value, comment)
+            },
+            onDismiss = {
+                showReportDialog = false
+                viewModel.clearReportState()
+            },
+            isLoading = uiState.isReportLoading,
+            error = uiState.reportError
+        )
     }
 }
 
@@ -160,7 +252,9 @@ private fun SpotDetailContent(
     spot: ParkingSpot,
     onOpenMaps: () -> Unit,
     onReport: () -> Unit,
-    onCheckIn: () -> Unit
+    onCheckIn: () -> Unit,
+    checkInCount: Int,
+    isCheckInLoading: Boolean
 ) {
     Column(
         modifier = Modifier
@@ -202,6 +296,15 @@ private fun SpotDetailContent(
                 label = "地址",
                 value = spot.address
             )
+
+            // Check-in count
+            if (checkInCount > 0) {
+                InfoRow(
+                    icon = Icons.Default.People,
+                    label = "打卡人數",
+                    value = "已有 $checkInCount 人停過"
+                )
+            }
 
             // Plate Types
             Row(
@@ -262,10 +365,9 @@ private fun SpotDetailContent(
                     label = "開啟地圖",
                     onClick = onOpenMaps
                 )
-                ActionButton(
-                    icon = Icons.Default.LocationOn,
-                    label = "打卡",
-                    onClick = onCheckIn
+                CheckInButton(
+                    onClick = onCheckIn,
+                    isLoading = isCheckInLoading
                 )
                 ActionButton(
                     icon = Icons.Default.Flag,
@@ -392,6 +494,39 @@ private fun ActionButton(
         }
         Text(
             text = label,
+            style = MaterialTheme.typography.labelSmall
+        )
+    }
+}
+
+@Composable
+private fun CheckInButton(
+    onClick: () -> Unit,
+    isLoading: Boolean
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        FilledTonalIconButton(
+            onClick = onClick,
+            modifier = Modifier.size(48.dp),
+            enabled = !isLoading
+        ) {
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Default.LocationOn,
+                    contentDescription = "打卡"
+                )
+            }
+        }
+        Text(
+            text = "打卡",
             style = MaterialTheme.typography.labelSmall
         )
     }

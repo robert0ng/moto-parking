@@ -20,6 +20,8 @@ androidx-activity = "1.12.2"
 androidx-lifecycle = "2.9.6"
 navigation-compose = "2.9.1"
 play-services-location = "21.3.0"
+credentials = "1.3.0"
+googleid = "1.1.1"
 
 [libraries]
 # Ktor
@@ -62,6 +64,9 @@ supabase-realtime = { module = "io.github.jan-tennert.supabase:realtime-kt", ver
 # Android
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity" }
 play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "play-services-location" }
+credentials = { module = "androidx.credentials:credentials", version.ref = "credentials" }
+credentials-play-services = { module = "androidx.credentials:credentials-play-services-auth", version.ref = "credentials" }
+googleid = { module = "com.google.android.libraries.identity.googleid:googleid", version.ref = "googleid" }
 
 jetbrains-lifecycle-viewmodel = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel", version.ref = "androidx-lifecycle" }
 jetbrains-lifecycle-runtime-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidx-lifecycle" }

@@ -109,6 +109,52 @@ class ParkingRepository(
             Result.failure(e)
         }
     }
+
+    /**
+     * Check if spot is in user's favorites
+     */
+    suspend fun isFavorite(userId: String, spotId: String): Boolean {
+        return try {
+            dataSource.isFavorite(userId, spotId)
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /**
+     * Submit a report for a parking spot
+     */
+    suspend fun submitReport(userId: String, spotId: String, category: String, comment: String?): Result<Unit> {
+        return try {
+            dataSource.submitReport(userId, spotId, category, comment)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Check in to a parking spot
+     */
+    suspend fun checkIn(userId: String, spotId: String): Result<Unit> {
+        return try {
+            dataSource.checkIn(userId, spotId)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Get total check-in count for a spot
+     */
+    suspend fun getCheckInCount(spotId: String): Int {
+        return try {
+            dataSource.getCheckInCount(spotId)
+        } catch (e: Exception) {
+            0
+        }
+    }
 }
 
 // Extension function to convert DTO to domain model using the mapper
