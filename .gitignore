@@ -19,6 +19,12 @@ local.properties
 *.apk
 *.aab
 
+# Keystore (sensitive - do not commit)
+keystore/
+*.keystore
+*.jks
+key.properties
+
 # iOS
 iosApp/iosApp.xcodeproj/project.xcworkspace/
 iosApp/iosApp.xcodeproj/xcuserdata/
