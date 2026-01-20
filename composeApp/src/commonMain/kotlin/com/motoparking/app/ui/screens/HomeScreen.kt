@@ -11,6 +11,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.motoparking.app.util.DEFAULT_LOCATION
+import com.motoparking.app.util.Geocoder
+import com.motoparking.app.util.Location
+import com.motoparking.app.util.LocationPermissionStatus
+import com.motoparking.app.util.LocationService
+import com.motoparking.app.util.RequestLocationPermission
 
 enum class Screen {
     MAP, LIST
@@ -33,12 +42,99 @@ fun HomeScreen(
     var selectedRadius by remember { mutableStateOf(1000) }
     var showRadiusMenu by remember { mutableStateOf(false) }
 
+    // Location state
+    val locationService = remember { LocationService() }
+    val geocoder = remember { Geocoder() }
+    var currentLocation by remember { mutableStateOf<Location?>(null) }
+    var locationName by remember { mutableStateOf<String?>(null) }
+    var locationError by remember { mutableStateOf<String?>(null) }
+    var isLoadingLocation by remember { mutableStateOf(true) }
+    var permissionStatus by remember { mutableStateOf<LocationPermissionStatus?>(null) }
+    var shouldRequestPermission by remember { mutableStateOf(true) }
+
+    // Fetch location name when location changes
+    LaunchedEffect(currentLocation) {
+        currentLocation?.let { location ->
+            geocoder.getLocationName(location.latitude, location.longitude) { name ->
+                locationName = name
+            }
+        }
+    }
+
+    // Build the toolbar title - only show location name if permission granted
+    val toolbarTitle = remember(locationName, selectedRadius, permissionStatus) {
+        val radiusText = formatRadius(selectedRadius)
+        if (permissionStatus == LocationPermissionStatus.GRANTED && locationName != null) {
+            "${locationName}附近$radiusText"
+        } else {
+            "附近$radiusText"
+        }
+    }
+
+    // Function to get location after permission is determined
+    fun getLocationIfPermitted() {
+        when (permissionStatus) {
+            LocationPermissionStatus.GRANTED -> {
+                isLoadingLocation = true
+                locationService.getCurrentLocation(
+                    onSuccess = { location ->
+                        currentLocation = location
+                        isLoadingLocation = false
+                    },
+                    onError = { error ->
+                        locationError = error
+                        currentLocation = DEFAULT_LOCATION
+                        isLoadingLocation = false
+                    }
+                )
+            }
+            LocationPermissionStatus.DENIED, LocationPermissionStatus.NOT_DETERMINED -> {
+                currentLocation = DEFAULT_LOCATION
+                isLoadingLocation = false
+            }
+            null -> {
+                // Permission not yet checked
+            }
+        }
+    }
+
+    // Request permission on first launch
+    if (shouldRequestPermission) {
+        RequestLocationPermission { status ->
+            permissionStatus = status
+            shouldRequestPermission = false
+            getLocationIfPermitted()
+        }
+    }
+
+    // Check location permission on every app resume (in case user changed it in Settings)
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                // Re-check permission status (user might have changed in Settings)
+                val newStatus = locationService.checkPermissionStatus()
+                if (newStatus != permissionStatus) {
+                    permissionStatus = newStatus
+                    getLocationIfPermitted()
+                } else if (newStatus == LocationPermissionStatus.GRANTED && currentLocation == DEFAULT_LOCATION) {
+                    // Permission was granted but we're still on default location
+                    getLocationIfPermitted()
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
     val radiusOptions = listOf(500, 1000, 2000, 5000)
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("大重機停車位 (${formatRadius(selectedRadius)})") },
+                title = { Text(toolbarTitle) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
@@ -92,12 +188,36 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            when (currentScreen) {
-                Screen.MAP -> MapScreenPlaceholder()
-                Screen.LIST -> ListScreen(
-                    radiusMeters = selectedRadius,
-                    onSpotClick = onSpotClick
-                )
+            when {
+                isLoadingLocation -> {
+                    // Show loading while getting location
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            CircularProgressIndicator()
+                            Text(
+                                text = "正在取得位置...",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+                currentScreen == Screen.MAP -> MapScreenPlaceholder()
+                currentScreen == Screen.LIST -> {
+                    val location = currentLocation ?: DEFAULT_LOCATION
+                    ListScreen(
+                        currentLatitude = location.latitude,
+                        currentLongitude = location.longitude,
+                        radiusMeters = selectedRadius,
+                        onSpotClick = onSpotClick
+                    )
+                }
             }
         }
     }

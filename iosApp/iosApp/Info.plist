@@ -46,5 +46,7 @@
         <string>UIInterfaceOrientationLandscapeLeft</string>
         <string>UIInterfaceOrientationLandscapeRight</string>
     </array>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>需要您的位置來搜尋附近的大重機停車位</string>
 </dict>
 </plist>

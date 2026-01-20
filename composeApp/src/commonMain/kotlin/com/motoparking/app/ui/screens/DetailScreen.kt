@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.motoparking.app.ui.viewmodels.DetailViewModel
+import com.motoparking.app.util.openInMaps
 import com.motoparking.shared.domain.model.DataSource
 import com.motoparking.shared.domain.model.ParkingSpot
 import com.motoparking.shared.domain.model.PlateType
@@ -84,12 +85,18 @@ fun DetailScreen(
                     )
                 }
                 uiState.spot != null -> {
+                    val spot = uiState.spot!!
                     SpotDetailContent(
-                        spot = uiState.spot!!,
-                        onOpenMaps = { /* TODO: Open in Maps */ },
-                        onNavigate = { /* TODO: Navigate */ },
-                        onShare = { /* TODO: Share */ },
-                        onReport = { /* TODO: Report */ }
+                        spot = spot,
+                        onOpenMaps = {
+                            openInMaps(
+                                latitude = spot.latitude,
+                                longitude = spot.longitude,
+                                label = spot.name
+                            )
+                        },
+                        onReport = { /* TODO: Report - Phase 3 */ },
+                        onCheckIn = { /* TODO: Check-in - Phase 5 */ }
                     )
                 }
             }
@@ -152,9 +159,8 @@ private fun ErrorContent(
 private fun SpotDetailContent(
     spot: ParkingSpot,
     onOpenMaps: () -> Unit,
-    onNavigate: () -> Unit,
-    onShare: () -> Unit,
-    onReport: () -> Unit
+    onReport: () -> Unit,
+    onCheckIn: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -257,34 +263,15 @@ private fun SpotDetailContent(
                     onClick = onOpenMaps
                 )
                 ActionButton(
-                    icon = Icons.Default.Navigation,
-                    label = "導航",
-                    onClick = onNavigate
+                    icon = Icons.Default.LocationOn,
+                    label = "打卡",
+                    onClick = onCheckIn
                 )
                 ActionButton(
-                    icon = Icons.Default.Share,
-                    label = "分享",
-                    onClick = onShare
+                    icon = Icons.Default.Flag,
+                    label = "回報問題",
+                    onClick = onReport
                 )
-            }
-
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-            // Report Button
-            OutlinedButton(
-                onClick = onReport,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = MaterialTheme.colorScheme.error
-                )
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Flag,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("回報問題")
             }
         }
     }
