@@ -165,12 +165,17 @@ fun DetailScreen(
                         authViewModel.signInWithGoogle(result.idToken, result.accessToken)
                     }
                     is GoogleSignInResult.Error -> {
-                        // Error is shown in the dialog
+                        // Reopen dialog to show error
+                        showLoginDialog = true
                     }
                     is GoogleSignInResult.Cancelled -> {
                         // User cancelled
                     }
                 }
+            },
+            onGoogleSignInStarted = {
+                // Dismiss dialog when sign-in starts to avoid UI overlap
+                showLoginDialog = false
             },
             onSignOut = { authViewModel.signOut() },
             onDismiss = {

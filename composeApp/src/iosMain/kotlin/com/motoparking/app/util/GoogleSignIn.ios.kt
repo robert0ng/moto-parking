@@ -10,24 +10,33 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import kotlinx.cinterop.ExperimentalForeignApi
+import platform.Foundation.NSBundle
+import platform.UIKit.UIApplication
+import platform.UIKit.UIWindowScene
 
 /**
  * iOS implementation of Google Sign-In.
- * TODO: Integrate Google Sign-In SDK via CocoaPods for production.
- * For now, this shows a placeholder button.
+ * Uses native GoogleSignIn SDK via Swift helper.
  */
 @Composable
 actual fun GoogleSignInButton(
     onSignInResult: (GoogleSignInResult) -> Unit,
+    onSignInStarted: () -> Unit,
     enabled: Boolean
 ) {
     var isLoading by remember { mutableStateOf(false) }
 
     Button(
         onClick = {
-            // TODO: Implement iOS Google Sign-In with Google Sign-In SDK
-            // For now, show an error message
-            onSignInResult(GoogleSignInResult.Error("iOS Google 登入尚未實作，敬請期待"))
+            if (!isLoading) {
+                isLoading = true
+                onSignInStarted()
+                IOSGoogleSignIn.signIn { result ->
+                    isLoading = false
+                    onSignInResult(result)
+                }
+            }
         },
         enabled = enabled && !isLoading
     ) {
@@ -42,5 +51,31 @@ actual fun GoogleSignInButton(
         }
         Spacer(modifier = Modifier.width(8.dp))
         Text(if (isLoading) "登入中..." else "使用 Google 登入")
+    }
+}
+
+/**
+ * iOS Google Sign-In handler.
+ * The actual sign-in is performed by the Swift GoogleSignInHelper.
+ * Bridge is set up in MainViewController.kt and ContentView.swift
+ */
+object IOSGoogleSignIn {
+    private var callback: ((GoogleSignInResult) -> Unit)? = null
+
+    fun signIn(onResult: (GoogleSignInResult) -> Unit) {
+        callback = onResult
+        // Trigger sign-in request via the bridge (calls Swift)
+        com.motoparking.app.requestGoogleSignIn()
+    }
+
+    // Called from Swift via MainViewControllerKt.onGoogleSignInComplete
+    fun onSignInResult(idToken: String?, accessToken: String?, error: String?) {
+        val result = when {
+            idToken != null -> GoogleSignInResult.Success(idToken, accessToken)
+            error != null -> GoogleSignInResult.Error(error)
+            else -> GoogleSignInResult.Cancelled
+        }
+        callback?.invoke(result)
+        callback = null
     }
 }

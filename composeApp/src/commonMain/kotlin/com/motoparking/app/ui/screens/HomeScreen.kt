@@ -253,12 +253,17 @@ fun HomeScreen(
                         authViewModel.signInWithGoogle(result.idToken, result.accessToken)
                     }
                     is GoogleSignInResult.Error -> {
-                        // Error is shown in the dialog
+                        // Reopen dialog to show error
+                        showProfileDialog = true
                     }
                     is GoogleSignInResult.Cancelled -> {
                         // User cancelled, do nothing
                     }
                 }
+            },
+            onGoogleSignInStarted = {
+                // Dismiss dialog when sign-in starts to avoid UI overlap
+                showProfileDialog = false
             },
             onSignOut = { authViewModel.signOut() },
             onDismiss = {

@@ -20,6 +20,7 @@ import com.motoparking.app.util.GoogleSignInResult
 fun ProfileDialog(
     authState: AuthUiState,
     onGoogleSignInResult: (GoogleSignInResult) -> Unit,
+    onGoogleSignInStarted: () -> Unit,
     onSignOut: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -102,6 +103,7 @@ fun ProfileDialog(
 
                     GoogleSignInButton(
                         onSignInResult = onGoogleSignInResult,
+                        onSignInStarted = onGoogleSignInStarted,
                         enabled = !authState.isLoading
                     )
                 }

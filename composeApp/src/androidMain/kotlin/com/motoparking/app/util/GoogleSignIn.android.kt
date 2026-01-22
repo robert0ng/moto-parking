@@ -40,6 +40,7 @@ private fun Context.findActivity(): Activity? {
 @Composable
 actual fun GoogleSignInButton(
     onSignInResult: (GoogleSignInResult) -> Unit,
+    onSignInStarted: () -> Unit,
     enabled: Boolean
 ) {
     val context = LocalContext.current
@@ -50,6 +51,7 @@ actual fun GoogleSignInButton(
         onClick = {
             if (!isLoading) {
                 isLoading = true
+                onSignInStarted()
                 coroutineScope.launch {
                     try {
                         val activity = context.findActivity()

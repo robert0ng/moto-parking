@@ -18,5 +18,6 @@ sealed class GoogleSignInResult {
 @Composable
 expect fun GoogleSignInButton(
     onSignInResult: (GoogleSignInResult) -> Unit,
+    onSignInStarted: () -> Unit = {},
     enabled: Boolean = true
 )

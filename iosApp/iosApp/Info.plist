@@ -48,5 +48,18 @@
     </array>
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>需要您的位置來搜尋附近的大重機停車位</string>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>com.googleusercontent.apps.644927957739-p5cpshgpkitqafvmqfi3m6373ue71e3o</string>
+            </array>
+            <key>CFBundleURLName</key>
+            <string>Google Sign-In</string>
+        </dict>
+    </array>
+    <key>GIDClientID</key>
+    <string>644927957739-p5cpshgpkitqafvmqfi3m6373ue71e3o.apps.googleusercontent.com</string>
 </dict>
 </plist>
