@@ -235,7 +235,15 @@ fun HomeScreen(
                         }
                     }
                 }
-                currentScreen == Screen.MAP -> MapScreenPlaceholder()
+                currentScreen == Screen.MAP -> {
+                    val location = currentLocation ?: DEFAULT_LOCATION
+                    MapScreenContent(
+                        currentLatitude = location.latitude,
+                        currentLongitude = location.longitude,
+                        radiusMeters = selectedRadius,
+                        onSpotClick = onSpotClick
+                    )
+                }
                 currentScreen == Screen.LIST -> {
                     val location = currentLocation ?: DEFAULT_LOCATION
                     ListScreen(
@@ -284,30 +292,77 @@ fun HomeScreen(
 }
 
 @Composable
-fun MapScreenPlaceholder() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Place,
-                contentDescription = null,
-                modifier = Modifier.size(64.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-            Text(
-                text = "地圖功能開發中",
-                style = MaterialTheme.typography.titleMedium
-            )
-            Text(
-                text = "將整合 Google Maps / Apple Maps",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+fun MapScreenContent(
+    viewModel: ParkingListViewModel = koinViewModel(),
+    currentLatitude: Double = 25.048,
+    currentLongitude: Double = 121.517,
+    radiusMeters: Int = 1000,
+    onSpotClick: (spotId: String) -> Unit = {}
+) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    // Load nearby spots when location/radius changes
+    LaunchedEffect(currentLatitude, currentLongitude, radiusMeters) {
+        viewModel.loadNearbySpots(currentLatitude, currentLongitude, radiusMeters)
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        when {
+            uiState.isLoading -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        CircularProgressIndicator()
+                        Text(
+                            text = "正在載入停車位...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+            uiState.error != null -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Place,
+                            contentDescription = null,
+                            modifier = Modifier.size(64.dp),
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                        Text(
+                            text = uiState.error ?: "載入失敗",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        TextButton(onClick = {
+                            viewModel.loadNearbySpots(currentLatitude, currentLongitude, radiusMeters)
+                        }) {
+                            Text("重試")
+                        }
+                    }
+                }
+            }
+            else -> {
+                MapScreen(
+                    parkingSpots = uiState.spots,
+                    userLatitude = currentLatitude,
+                    userLongitude = currentLongitude,
+                    selectedRadius = radiusMeters,
+                    onSpotClick = { spot -> onSpotClick(spot.id) }
+                )
+            }
         }
     }
 }

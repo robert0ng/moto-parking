@@ -279,8 +279,8 @@ private fun SpotDetailContent(
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
     ) {
-        // Mini Map Placeholder
-        MiniMapPlaceholder(spot = spot)
+        // Mini Map
+        MiniMapSection(spot = spot)
 
         // Spot Information
         Column(
@@ -399,36 +399,13 @@ private fun SpotDetailContent(
 }
 
 @Composable
-private fun MiniMapPlaceholder(spot: ParkingSpot) {
-    Box(
+private fun MiniMapSection(spot: ParkingSpot) {
+    MiniMap(
+        spot = spot,
         modifier = Modifier
             .fillMaxWidth()
             .height(200.dp)
-            .background(MaterialTheme.colorScheme.surfaceVariant),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Place,
-                contentDescription = null,
-                modifier = Modifier.size(48.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-            Text(
-                text = "地圖將顯示於此",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = "${spot.latitude}, ${spot.longitude}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
+    )
 }
 
 @Composable

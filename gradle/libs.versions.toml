@@ -20,6 +20,8 @@ androidx-activity = "1.12.2"
 androidx-lifecycle = "2.9.6"
 navigation-compose = "2.9.1"
 play-services-location = "21.3.0"
+play-services-maps = "18.2.0"
+maps-compose = "4.3.3"
 credentials = "1.3.0"
 googleid = "1.1.1"
 
@@ -64,6 +66,9 @@ supabase-realtime = { module = "io.github.jan-tennert.supabase:realtime-kt", ver
 # Android
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity" }
 play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "play-services-location" }
+play-services-maps = { module = "com.google.android.gms:play-services-maps", version.ref = "play-services-maps" }
+maps-compose = { module = "com.google.maps.android:maps-compose", version.ref = "maps-compose" }
+maps-compose-utils = { module = "com.google.maps.android:maps-compose-utils", version.ref = "maps-compose" }
 credentials = { module = "androidx.credentials:credentials", version.ref = "credentials" }
 credentials-play-services = { module = "androidx.credentials:credentials-play-services-auth", version.ref = "credentials" }
 googleid = { module = "com.google.android.libraries.identity.googleid:googleid", version.ref = "googleid" }
