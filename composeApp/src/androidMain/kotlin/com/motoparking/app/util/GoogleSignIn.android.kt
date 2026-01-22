@@ -51,7 +51,9 @@ actual fun GoogleSignInButton(
         onClick = {
             if (!isLoading) {
                 isLoading = true
-                onSignInStarted()
+                // Note: Don't call onSignInStarted() on Android
+                // The Credential Manager shows a bottom sheet on top, no dialog overlap issue
+                // Calling it dismisses the ProfileDialog which disrupts the coroutine context
                 coroutineScope.launch {
                     try {
                         val activity = context.findActivity()

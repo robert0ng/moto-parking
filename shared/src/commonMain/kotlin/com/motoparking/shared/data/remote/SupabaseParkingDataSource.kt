@@ -179,6 +179,17 @@ class SupabaseParkingDataSource(
             parameters = params
         ).decodeSingle<Int>()
     }
+
+    override suspend fun canUserCheckIn(userId: String, spotId: String): Boolean {
+        val params = buildJsonObject {
+            put("p_user_id", userId)
+            put("p_spot_id", spotId)
+        }
+        return supabaseClient.postgrest.rpc(
+            function = "can_user_check_in",
+            parameters = params
+        ).decodeSingle<Boolean>()
+    }
 }
 
 @Serializable

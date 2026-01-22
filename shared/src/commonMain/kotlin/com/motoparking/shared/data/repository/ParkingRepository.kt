@@ -155,6 +155,17 @@ class ParkingRepository(
             0
         }
     }
+
+    /**
+     * Check if user can check in (24-hour cooldown)
+     */
+    suspend fun canUserCheckIn(userId: String, spotId: String): Boolean {
+        return try {
+            dataSource.canUserCheckIn(userId, spotId)
+        } catch (e: Exception) {
+            true // Allow check-in on error (fail open)
+        }
+    }
 }
 
 // Extension function to convert DTO to domain model using the mapper

@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.TwoWheeler
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -48,6 +49,10 @@ fun HomeScreen(
     var selectedRadius by remember { mutableStateOf(1000) }
     var showRadiusMenu by remember { mutableStateOf(false) }
     var showProfileDialog by remember { mutableStateOf(false) }
+
+    // Snackbar state
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
 
     // Auth state
     val authState by authViewModel.uiState.collectAsState()
@@ -142,6 +147,7 @@ fun HomeScreen(
     val radiusOptions = listOf(500, 1000, 2000, 5000)
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(toolbarTitle) },
@@ -251,6 +257,9 @@ fun HomeScreen(
                 when (result) {
                     is GoogleSignInResult.Success -> {
                         authViewModel.signInWithGoogle(result.idToken, result.accessToken)
+                        coroutineScope.launch {
+                            snackbarHostState.showSnackbar("登入成功")
+                        }
                     }
                     is GoogleSignInResult.Error -> {
                         // Reopen dialog to show error

@@ -22,6 +22,7 @@ data class DetailUiState(
     val isCheckInLoading: Boolean = false,
     val checkInSuccess: Boolean = false,
     val checkInError: String? = null,
+    val hasCheckedInToday: Boolean = false,
     val requiresAuth: Boolean = false,
     val error: String? = null
 )
@@ -196,7 +197,8 @@ class DetailViewModel(
                         _uiState.value = _uiState.value.copy(
                             isCheckInLoading = false,
                             checkInCount = newCount,
-                            checkInSuccess = true
+                            checkInSuccess = true,
+                            hasCheckedInToday = true
                         )
                     }
                     .onFailure { e ->
@@ -222,10 +224,29 @@ class DetailViewModel(
     }
 
     /**
-     * Load check-in count for the current spot
+     * Load check-in count and user's check-in status for the current spot
      */
     private suspend fun loadCheckInStatus(spotId: String) {
         val count = repository.getCheckInCount(spotId)
-        _uiState.value = _uiState.value.copy(checkInCount = count)
+        val userId = authRepository.getCurrentUserId()
+        val hasCheckedIn = if (userId != null) {
+            !repository.canUserCheckIn(userId, spotId)
+        } else {
+            false
+        }
+        _uiState.value = _uiState.value.copy(
+            checkInCount = count,
+            hasCheckedInToday = hasCheckedIn
+        )
+    }
+
+    /**
+     * Refresh check-in status after auth state changes
+     */
+    fun refreshCheckInStatus() {
+        val spotId = currentSpotId ?: return
+        viewModelScope.launch {
+            loadCheckInStatus(spotId)
+        }
     }
 }
