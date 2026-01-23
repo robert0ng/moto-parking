@@ -77,7 +77,8 @@ class ParkingListViewModel(
                     offset = currentOffset,
                     limit = pageSize
                 )
-                val allSpots = _uiState.value.spots + moreSpots
+                // Deduplicate by ID to prevent LazyColumn key crashes
+                val allSpots = (_uiState.value.spots + moreSpots).distinctBy { it.id }
                 _uiState.value = _uiState.value.copy(
                     spots = allSpots,
                     filteredSpots = filterSpots(allSpots, _uiState.value.searchQuery),

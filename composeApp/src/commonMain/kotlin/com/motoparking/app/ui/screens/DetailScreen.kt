@@ -264,6 +264,10 @@ private fun ErrorContent(
     }
 }
 
+private fun ParkingSpot.hasValidCoordinates(): Boolean {
+    return latitude != 0.0 || longitude != 0.0
+}
+
 @Composable
 private fun SpotDetailContent(
     spot: ParkingSpot,
@@ -274,6 +278,7 @@ private fun SpotDetailContent(
     isCheckInLoading: Boolean,
     hasCheckedInToday: Boolean
 ) {
+    val hasValidCoordinates = spot.hasValidCoordinates()
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -381,7 +386,8 @@ private fun SpotDetailContent(
                 ActionButton(
                     icon = Icons.Default.Map,
                     label = "開啟地圖",
-                    onClick = onOpenMaps
+                    onClick = onOpenMaps,
+                    enabled = hasValidCoordinates
                 )
                 CheckInButton(
                     onClick = onCheckIn,
@@ -473,7 +479,8 @@ private fun PlateTypeBadge(plateType: PlateType) {
 private fun ActionButton(
     icon: ImageVector,
     label: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    enabled: Boolean = true
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -481,7 +488,8 @@ private fun ActionButton(
     ) {
         FilledTonalIconButton(
             onClick = onClick,
-            modifier = Modifier.size(48.dp)
+            modifier = Modifier.size(48.dp),
+            enabled = enabled
         ) {
             Icon(
                 imageVector = icon,
@@ -490,7 +498,8 @@ private fun ActionButton(
         }
         Text(
             text = label,
-            style = MaterialTheme.typography.labelSmall
+            style = MaterialTheme.typography.labelSmall,
+            color = if (enabled) Color.Unspecified else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
         )
     }
 }

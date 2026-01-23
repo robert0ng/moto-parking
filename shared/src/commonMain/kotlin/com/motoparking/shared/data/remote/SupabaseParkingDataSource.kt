@@ -17,7 +17,7 @@ class SupabaseParkingDataSource(
 
     private val selectColumns = """
         id, name, address, plate_types, capacity, source,
-        is_verified, description, created_at, updated_at
+        is_verified, description, created_at, updated_at, latitude, longitude
     """.trimIndent()
 
     override suspend fun getAllParkingSpots(): List<ParkingSpotDto> {

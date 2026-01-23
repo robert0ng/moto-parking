@@ -8,18 +8,30 @@ import com.motoparking.shared.domain.model.PlateType
 class ParkingRepository(
     private val dataSource: ParkingDataSource
 ) {
+    // In-memory cache for parking spots to avoid redundant API calls
+    private val spotCache = mutableMapOf<String, ParkingSpot>()
+
     /**
      * Fetch all parking spots
      */
     suspend fun getAllParkingSpots(): List<ParkingSpot> {
-        return dataSource.getAllParkingSpots().map { it.toDomain() }
+        val spots = dataSource.getAllParkingSpots().map { it.toDomain() }
+        // Cache all fetched spots
+        spots.forEach { spotCache[it.id] = it }
+        return spots
     }
 
     /**
      * Fetch a single parking spot by ID
+     * Checks cache first before making API call
      */
     suspend fun getParkingSpotById(spotId: String): ParkingSpot? {
-        return dataSource.getParkingSpotById(spotId)?.toDomain()
+        // Check cache first
+        spotCache[spotId]?.let { return it }
+        // Fallback to API
+        return dataSource.getParkingSpotById(spotId)?.toDomain()?.also {
+            spotCache[it.id] = it
+        }
     }
 
     /**
@@ -32,22 +44,38 @@ class ParkingRepository(
         offset: Int = 0,
         limit: Int = 20
     ): List<ParkingSpot> {
-        return dataSource.getNearbyParkingSpots(latitude, longitude, radiusMeters, offset, limit)
+        val spots = dataSource.getNearbyParkingSpots(latitude, longitude, radiusMeters, offset, limit)
             .map { it.toDomain() }
+        // Cache all fetched spots
+        spots.forEach { spotCache[it.id] = it }
+        return spots
     }
 
     /**
      * Search parking spots by name or address
      */
     suspend fun searchParkingSpots(query: String): List<ParkingSpot> {
-        return dataSource.searchParkingSpots(query).map { it.toDomain() }
+        val spots = dataSource.searchParkingSpots(query).map { it.toDomain() }
+        // Cache all fetched spots
+        spots.forEach { spotCache[it.id] = it }
+        return spots
+    }
+
+    /**
+     * Clear the in-memory cache
+     */
+    fun clearCache() {
+        spotCache.clear()
     }
 
     /**
      * Filter parking spots by plate type
      */
     suspend fun getParkingSpotsByPlateType(plateType: PlateType): List<ParkingSpot> {
-        return dataSource.getParkingSpotsByPlateType(plateType.name).map { it.toDomain() }
+        val spots = dataSource.getParkingSpotsByPlateType(plateType.name).map { it.toDomain() }
+        // Cache all fetched spots
+        spots.forEach { spotCache[it.id] = it }
+        return spots
     }
 
     /**
@@ -73,7 +101,10 @@ class ParkingRepository(
                 "p_description" to description
             )
             val response = dataSource.submitParkingSpot(params)
-            Result.success(response.toDomain())
+            val spot = response.toDomain()
+            // Cache the newly created spot
+            spotCache[spot.id] = spot
+            Result.success(spot)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -83,7 +114,10 @@ class ParkingRepository(
      * Get user's favorite spots
      */
     suspend fun getUserFavorites(userId: String): List<ParkingSpot> {
-        return dataSource.getUserFavorites(userId).map { it.toDomain() }
+        val spots = dataSource.getUserFavorites(userId).map { it.toDomain() }
+        // Cache all fetched spots
+        spots.forEach { spotCache[it.id] = it }
+        return spots
     }
 
     /**

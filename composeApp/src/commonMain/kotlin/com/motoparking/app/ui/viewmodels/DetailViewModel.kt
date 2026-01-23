@@ -38,11 +38,20 @@ class DetailViewModel(
     private var currentSpotId: String? = null
 
     fun loadSpot(spotId: String) {
+        // Guard against empty spotId
+        if (spotId.isBlank()) return
+
+        // Avoid redundant loading if already loaded this spot
+        if (currentSpotId == spotId && _uiState.value.spot != null) return
+
         currentSpotId = spotId
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
                 val spot = repository.getParkingSpotById(spotId)
+                // Check if spotId is still current (guard against race conditions)
+                if (currentSpotId != spotId) return@launch
+
                 _uiState.value = _uiState.value.copy(
                     spot = spot,
                     isLoading = false,
@@ -55,6 +64,9 @@ class DetailViewModel(
                 // Load check-in status
                 loadCheckInStatus(spotId)
             } catch (e: Exception) {
+                // Check if spotId is still current (guard against race conditions)
+                if (currentSpotId != spotId) return@launch
+
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     error = e.message ?: "載入失敗"

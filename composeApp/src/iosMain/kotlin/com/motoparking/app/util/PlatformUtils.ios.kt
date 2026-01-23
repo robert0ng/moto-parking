@@ -25,7 +25,8 @@ actual fun openInMaps(latitude: Double, longitude: Double, label: String) {
     val urlString = "http://maps.apple.com/?ll=$latitude,$longitude&q=$encodedLabel"
     val url = NSURL.URLWithString(urlString) ?: return
 
-    UIApplication.sharedApplication.openURL(url)
+    // Use modern API (openURL was deprecated in iOS 10)
+    UIApplication.sharedApplication.openURL(url, options = emptyMap<Any?, Any>()) { _ -> }
 }
 
 actual fun navigateTo(latitude: Double, longitude: Double, label: String) {
@@ -33,7 +34,8 @@ actual fun navigateTo(latitude: Double, longitude: Double, label: String) {
     val urlString = "http://maps.apple.com/?daddr=$latitude,$longitude&dirflg=d"
     val url = NSURL.URLWithString(urlString) ?: return
 
-    UIApplication.sharedApplication.openURL(url)
+    // Use modern API (openURL was deprecated in iOS 10)
+    UIApplication.sharedApplication.openURL(url, options = emptyMap<Any?, Any>()) { _ -> }
 }
 
 actual fun shareText(text: String, title: String) {
