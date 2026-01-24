@@ -4,12 +4,16 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.filter
+import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.GoogleMap
@@ -20,6 +24,9 @@ import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberMarkerState
 import com.motoparking.shared.domain.model.ParkingSpot
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.launch
 
 // Default location: Taipei Main Station
 private val DEFAULT_LOCATION = LatLng(25.0478, 121.5170)
@@ -43,6 +50,10 @@ actual fun MapScreen(
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(userLocation, DEFAULT_ZOOM)
     }
+    val coroutineScope = rememberCoroutineScope()
+
+    // Track currently selected/enlarged spot
+    var selectedSpotId by remember { mutableStateOf<String?>(null) }
 
     // Track camera position changes and report when camera stops moving
     LaunchedEffect(onMapCenterChanged) {
@@ -85,6 +96,7 @@ actual fun MapScreen(
             // Add markers for each parking spot (use distinctBy to avoid duplicate keys)
             parkingSpots.distinctBy { it.id }.forEach { spot ->
                 key(spot.id) {
+                    val isSelected = selectedSpotId == spot.id
                     val markerState = rememberMarkerState(
                         key = spot.id,
                         position = LatLng(spot.latitude, spot.longitude)
@@ -93,8 +105,31 @@ actual fun MapScreen(
                         state = markerState,
                         title = spot.name,
                         snippet = spot.address,
+                        // All markers use red color - selection is indicated by zIndex and info window
+                        // Create icons lazily (not in remember block) to ensure Google Play Services is initialized
+                        icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED),
+                        // Bring selected marker to front
+                        zIndex = if (isSelected) 1f else 0f,
+                        // Scale up alpha slightly for selected marker visibility
+                        alpha = if (isSelected) 1f else 0.85f,
                         onClick = {
-                            onSpotClick(spot)
+                            if (isSelected) {
+                                // Second tap on selected marker - navigate to detail
+                                onSpotClick(spot)
+                            } else {
+                                // First tap - select and center on this marker
+                                selectedSpotId = spot.id
+                                coroutineScope.launch {
+                                    cameraPositionState.animate(
+                                        CameraUpdateFactory.newLatLng(
+                                            LatLng(spot.latitude, spot.longitude)
+                                        ),
+                                        durationMs = 300
+                                    )
+                                }
+                                // Show info window to indicate selection
+                                it.showInfoWindow()
+                            }
                             true // Consume the click
                         }
                     )
