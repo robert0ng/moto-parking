@@ -38,51 +38,46 @@ class ParkingListViewModelTest {
 
     @Test
     fun loadMore_deduplicatesBySpotId() = runTest(testDispatcher) {
-        // Given: Initial spots loaded
-        fakeDataSource.spotsToReturn = listOf(
-            createSpotDto("spot-1", "Spot 1"),
-            createSpotDto("spot-2", "Spot 2"),
-            createSpotDto("spot-3", "Spot 3")
-        )
+        // Given: Initial spots loaded (need >= 20 items so hasMore=true)
+        val initialSpots = (1..20).map { createSpotDto("spot-$it", "Spot $it") }
+        fakeDataSource.spotsToReturn = initialSpots
         viewModel.loadNearbySpots(25.0, 121.5)
         advanceUntilIdle()
 
-        assertEquals(3, viewModel.uiState.value.spots.size)
+        assertEquals(20, viewModel.uiState.value.spots.size)
 
-        // When: Load more returns overlapping spots (spot-2 and spot-3 are duplicates)
+        // When: Load more returns overlapping spots (spot-19 and spot-20 are duplicates)
         fakeDataSource.spotsToReturn = listOf(
-            createSpotDto("spot-2", "Spot 2"),  // Duplicate
-            createSpotDto("spot-3", "Spot 3"),  // Duplicate
-            createSpotDto("spot-4", "Spot 4"),
-            createSpotDto("spot-5", "Spot 5")
+            createSpotDto("spot-19", "Spot 19"),  // Duplicate
+            createSpotDto("spot-20", "Spot 20"),  // Duplicate
+            createSpotDto("spot-21", "Spot 21"),
+            createSpotDto("spot-22", "Spot 22")
         )
         viewModel.loadMore()
         advanceUntilIdle()
 
         // Then: Duplicates are removed, only unique spots remain
         val spots = viewModel.uiState.value.spots
-        assertEquals(5, spots.size, "Should have 5 unique spots after deduplication")
+        assertEquals(22, spots.size, "Should have 22 unique spots after deduplication")
 
         val spotIds = spots.map { it.id }
         assertEquals(spotIds.distinct().size, spotIds.size, "All spot IDs should be unique")
         assertTrue(spotIds.contains("spot-1"))
-        assertTrue(spotIds.contains("spot-2"))
-        assertTrue(spotIds.contains("spot-3"))
-        assertTrue(spotIds.contains("spot-4"))
-        assertTrue(spotIds.contains("spot-5"))
+        assertTrue(spotIds.contains("spot-19"))
+        assertTrue(spotIds.contains("spot-20"))
+        assertTrue(spotIds.contains("spot-21"))
+        assertTrue(spotIds.contains("spot-22"))
     }
 
     @Test
     fun loadMore_withAllDuplicates_doesNotAddNewSpots() = runTest(testDispatcher) {
-        // Given: Initial spots
-        fakeDataSource.spotsToReturn = listOf(
-            createSpotDto("spot-1", "Spot 1"),
-            createSpotDto("spot-2", "Spot 2")
-        )
+        // Given: Initial spots (need >= 20 items so hasMore=true)
+        val initialSpots = (1..20).map { createSpotDto("spot-$it", "Spot $it") }
+        fakeDataSource.spotsToReturn = initialSpots
         viewModel.loadNearbySpots(25.0, 121.5)
         advanceUntilIdle()
 
-        assertEquals(2, viewModel.uiState.value.spots.size)
+        assertEquals(20, viewModel.uiState.value.spots.size)
 
         // When: Load more returns only duplicates
         fakeDataSource.spotsToReturn = listOf(
@@ -93,30 +88,32 @@ class ParkingListViewModelTest {
         advanceUntilIdle()
 
         // Then: No new spots added
-        assertEquals(2, viewModel.uiState.value.spots.size)
+        assertEquals(20, viewModel.uiState.value.spots.size)
     }
 
     @Test
     fun loadMore_preservesOrderWithFirstOccurrence() = runTest(testDispatcher) {
-        // Given: Initial spots
-        fakeDataSource.spotsToReturn = listOf(
-            createSpotDto("spot-1", "Original Spot 1"),
-            createSpotDto("spot-2", "Original Spot 2")
-        )
+        // Given: Initial spots (need >= 20 items so hasMore=true)
+        // spot-2 has "Original Spot 2" name
+        val initialSpots = (1..20).map { i ->
+            if (i == 2) createSpotDto("spot-2", "Original Spot 2")
+            else createSpotDto("spot-$i", "Spot $i")
+        }
+        fakeDataSource.spotsToReturn = initialSpots
         viewModel.loadNearbySpots(25.0, 121.5)
         advanceUntilIdle()
 
         // When: Load more with duplicate that has different name (same ID)
         fakeDataSource.spotsToReturn = listOf(
             createSpotDto("spot-2", "Updated Spot 2"),  // Same ID, different name
-            createSpotDto("spot-3", "Spot 3")
+            createSpotDto("spot-21", "Spot 21")
         )
         viewModel.loadMore()
         advanceUntilIdle()
 
         // Then: First occurrence is preserved (distinctBy keeps first)
         val spots = viewModel.uiState.value.spots
-        assertEquals(3, spots.size)
+        assertEquals(21, spots.size)
         assertEquals("Original Spot 2", spots.find { it.id == "spot-2" }?.name)
     }
 

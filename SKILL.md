@@ -98,6 +98,26 @@ val userLocation = mapView.userLocation ?: return@let
 
 **Location:** `MapScreen.ios.kt`
 
+### 4. ViewModel Pagination Tests Require pageSize Items
+
+**Problem:** `loadMore()` tests fail because the method returns early when `hasMore=false`, which happens when fewer than `pageSize` (20) items are returned.
+
+**Solution:** Return at least `pageSize` items in initial load so `hasMore=true`:
+
+```kotlin
+// DON'T do this (hasMore will be false, loadMore() won't execute):
+fakeDataSource.spotsToReturn = listOf(
+    createSpotDto("spot-1", "Spot 1"),
+    createSpotDto("spot-2", "Spot 2")
+)
+
+// DO this (hasMore will be true):
+val initialSpots = (1..20).map { createSpotDto("spot-$it", "Spot $it") }
+fakeDataSource.spotsToReturn = initialSpots
+```
+
+**Location:** `ParkingListViewModelTest.kt`
+
 ---
 
 ## Build & Run
@@ -145,6 +165,7 @@ xcrun simctl launch 'iPhone 16 Pro' com.motoparking.app
 - Changed default tab from Map to List when app starts
 - Added Compose UI test dependencies for Android unit tests
 - Added HomeScreenDefaultTabTest to verify default tab behavior
+- Fixed ParkingListViewModelTest pagination issue (tests need >= pageSize items for loadMore to execute)
 
 ### 2026-01-24
 - Cleaned up unused imports and dead code from map screens
