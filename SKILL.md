@@ -141,6 +141,16 @@ xcrun simctl launch 'iPhone 16 Pro' com.motoparking.app
 
 ## Changelog
 
+### 2026-01-27
+- Changed default tab from Map to List when app starts
+- Added Compose UI test dependencies for Android unit tests
+- Added HomeScreenDefaultTabTest to verify default tab behavior
+
+### 2026-01-24
+- Cleaned up unused imports and dead code from map screens
+- Removed leftover marker customization code (Bitmap, Canvas, marker size constants)
+- Fixed import ordering according to Kotlin conventions
+
 ### 2026-01-23
 - Added search area feature with in-memory location state
 - HomeViewModel manages search location (no persistence)

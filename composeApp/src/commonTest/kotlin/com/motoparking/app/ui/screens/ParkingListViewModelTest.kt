@@ -126,13 +126,13 @@ class ParkingListViewModelTest {
         address = "Test Address",
         latitude = 25.0,
         longitude = 121.5,
-        plate_types = "YELLOW",
+        plateTypes = listOf("YELLOW"),
         capacity = null,
         source = "GOVERNMENT",
-        is_verified = false,
+        isVerified = false,
         description = null,
-        created_at = "2024-01-01T00:00:00Z",
-        updated_at = "2024-01-01T00:00:00Z"
+        createdAt = "2024-01-01T00:00:00Z",
+        updatedAt = "2024-01-01T00:00:00Z"
     )
 }
 

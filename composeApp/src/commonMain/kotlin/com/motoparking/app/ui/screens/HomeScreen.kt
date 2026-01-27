@@ -83,7 +83,7 @@ fun HomeScreen(
     authViewModel: AuthViewModel = koinViewModel(),
     homeViewModel: HomeViewModel = koinViewModel()
 ) {
-    var currentScreen by rememberSaveable { mutableStateOf(Screen.MAP) }
+    var currentScreen by rememberSaveable { mutableStateOf(Screen.LIST) }
     var selectedRadius by remember { mutableStateOf(1000) }
     var showRadiusMenu by remember { mutableStateOf(false) }
     var showProfileDialog by remember { mutableStateOf(false) }
