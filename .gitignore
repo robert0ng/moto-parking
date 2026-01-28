@@ -37,3 +37,4 @@ DerivedData/
 
 # Generated
 generated/
+.kotlin/
