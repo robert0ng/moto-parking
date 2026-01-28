@@ -2,6 +2,10 @@ package com.motoparking.app.ui.screens
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -12,14 +16,16 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import com.google.android.gms.maps.CameraUpdateFactory
-import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerComposable
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberMarkerState
@@ -101,20 +107,17 @@ actual fun MapScreen(
                         key = spot.id,
                         position = LatLng(spot.latitude, spot.longitude)
                     )
-                    Marker(
+                    MarkerComposable(
                         state = markerState,
+                        keys = arrayOf(isSelected),
                         title = spot.name,
                         snippet = spot.address,
-                        // All markers use red color - selection is indicated by zIndex and info window
-                        // Create icons lazily (not in remember block) to ensure Google Play Services is initialized
-                        icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED),
                         // Bring selected marker to front
                         zIndex = if (isSelected) 1f else 0f,
-                        // Scale up alpha slightly for selected marker visibility
-                        alpha = if (isSelected) 1f else 0.85f,
-                        onClick = {
+                        onClick = { marker ->
                             if (isSelected) {
-                                // Second tap on selected marker - navigate to detail
+                                // Second tap on selected marker - shrink back and navigate to detail
+                                selectedSpotId = null
                                 onSpotClick(spot)
                             } else {
                                 // First tap - select and center on this marker
@@ -127,12 +130,19 @@ actual fun MapScreen(
                                         durationMs = 300
                                     )
                                 }
-                                // Show info window to indicate selection
-                                it.showInfoWindow()
+                                // Show info window with spot name
+                                marker.showInfoWindow()
                             }
                             true // Consume the click
                         }
-                    )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.LocationOn,
+                            contentDescription = null,
+                            modifier = Modifier.size(if (isSelected) 48.dp else 36.dp),
+                            tint = Color.Red
+                        )
+                    }
                 }
             }
         }
