@@ -11,6 +11,7 @@
 		7555FFB8242A651A00829871 /* iOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7555FFB7242A651A00829871 /* iOSApp.swift */; };
 		7555FFBA242A651A00829871 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7555FFB9242A651A00829871 /* ContentView.swift */; };
 		7555FFBC242A651A00829871 /* GoogleSignInHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7555FFBD242A651A00829871 /* GoogleSignInHelper.swift */; };
+		7555FFBE242A651A00829871 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7555FFBF242A651A00829871 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -20,6 +21,7 @@
 		7555FFB9242A651A00829871 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		7555FFBB242A651A00829871 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		7555FFBD242A651A00829871 /* GoogleSignInHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleSignInHelper.swift; sourceTree = "<group>"; };
+		7555FFBF242A651A00829871 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		C5321F349CDC21DCF5C67E86 /* Pods-iosApp.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-iosApp.debug.xcconfig"; path = "Target Support Files/Pods-iosApp/Pods-iosApp.debug.xcconfig"; sourceTree = "<group>"; };
 		C734BA0EDC7C125A10E64C21 /* Pods_iosApp.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_iosApp.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -70,6 +72,7 @@
 				7555FFB7242A651A00829871 /* iOSApp.swift */,
 				7555FFB9242A651A00829871 /* ContentView.swift */,
 				7555FFBD242A651A00829871 /* GoogleSignInHelper.swift */,
+				7555FFBF242A651A00829871 /* Assets.xcassets */,
 				7555FFBB242A651A00829871 /* Info.plist */,
 			);
 			path = iosApp;
@@ -145,6 +148,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7555FFBE242A651A00829871 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
