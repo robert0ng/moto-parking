@@ -35,6 +35,9 @@ DerivedData/
 *.xcuserstate
 *.xcworkspacedata
 
+# Store listing assets
+store/
+
 # Generated
 generated/
 .kotlin/
