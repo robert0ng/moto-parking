@@ -12,7 +12,13 @@
 
 ## 截圖
 
-*（待補充）*
+| 列表瀏覽 | 地圖模式 | 範圍篩選 |
+|:---:|:---:|:---:|
+| ![列表瀏覽](docs/screenshots/01_list_view.png) | ![地圖模式](docs/screenshots/02_map_view.png) | ![範圍篩選](docs/screenshots/03_range_filter.png) |
+
+| 停車位詳情 | 地圖標記資訊 |
+|:---:|:---:|
+| ![停車位詳情](docs/screenshots/04_spot_detail.png) | ![地圖標記資訊](docs/screenshots/05_map_marker_info.png) |
 
 ## 資料來源
 
@@ -21,7 +27,7 @@
 | 來源 | 說明 |
 |------|------|
 | **社群資料** | 由熱心車友共同維護的 [大重停車記事](https://www.google.com/maps/d/viewer?mid=1HUmSMnFWqGMIv2TpbTvBeiaLnFGkYbI) Google 地圖 |
-| **政府資料** | 政府開放資料平台（規劃中） |
+| **政府資料** | 各縣市政府公告之大型重機停車位資訊（台北市、新北市、桃園市） |
 | **使用者提交** | 使用者回報的停車點（規劃中） |
 
 > **注意**：停車位資訊可能隨時變動，實際停車前請以現場標示為準。本 App 僅供參考，不保證資料的即時性與準確性。
