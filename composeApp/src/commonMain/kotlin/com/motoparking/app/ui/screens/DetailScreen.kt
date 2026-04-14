@@ -29,6 +29,9 @@ import com.motoparking.shared.domain.model.DataSource
 import com.motoparking.shared.domain.model.ParkingSpot
 import com.motoparking.shared.domain.model.PlateType
 import com.motoparking.shared.domain.model.displayName
+import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import org.koin.compose.viewmodel.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -268,6 +271,13 @@ private fun ParkingSpot.hasValidCoordinates(): Boolean {
     return latitude != 0.0 || longitude != 0.0
 }
 
+private fun Instant.formatAsLocalDate(): String {
+    val dt = toLocalDateTime(TimeZone.currentSystemDefault())
+    val mm = dt.monthNumber.toString().padStart(2, '0')
+    val dd = dt.dayOfMonth.toString().padStart(2, '0')
+    return "${dt.year}-$mm-$dd"
+}
+
 @Composable
 private fun SpotDetailContent(
     spot: ParkingSpot,
@@ -365,6 +375,13 @@ private fun SpotDetailContent(
                 icon = Icons.Default.Source,
                 label = "資料來源",
                 value = spot.source.displayName()
+            )
+
+            // Last updated
+            InfoRow(
+                icon = Icons.Default.Update,
+                label = "最後更新",
+                value = spot.updatedAt.formatAsLocalDate()
             )
 
             // Description
