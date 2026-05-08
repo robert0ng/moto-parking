@@ -37,6 +37,7 @@ object ParkingSpotMapper {
     fun parseDataSource(source: String): DataSource {
         return when (source.uppercase()) {
             "GOVERNMENT" -> DataSource.GOVERNMENT
+            "GOVERNMENT_PRESS" -> DataSource.GOVERNMENT_PRESS
             "KML_IMPORT" -> DataSource.KML_IMPORT
             "USER_SUBMITTED" -> DataSource.USER_SUBMITTED
             else -> DataSource.USER_SUBMITTED

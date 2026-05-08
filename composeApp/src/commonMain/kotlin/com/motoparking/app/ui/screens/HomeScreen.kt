@@ -56,6 +56,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.motoparking.app.ui.components.ProfileDialog
 import com.motoparking.app.ui.viewmodels.AuthViewModel
 import com.motoparking.app.ui.viewmodels.HomeViewModel
+import com.motoparking.app.ui.viewmodels.PolicySegmentViewModel
 import com.motoparking.app.ui.viewmodels.PolicyViewModel
 import com.motoparking.app.util.DEFAULT_LOCATION
 import com.motoparking.app.util.Geocoder
@@ -429,6 +430,7 @@ fun HomeScreen(
 @Composable
 fun MapScreenContent(
     viewModel: ParkingListViewModel = koinViewModel(),
+    policySegmentViewModel: PolicySegmentViewModel = koinViewModel(),
     searchLatitude: Double = 25.048,
     searchLongitude: Double = 121.517,
     userLatitude: Double? = null,
@@ -438,6 +440,7 @@ fun MapScreenContent(
     onSearchArea: ((latitude: Double, longitude: Double, viewportRadiusMeters: Int) -> Unit)? = null
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val segmentUiState by policySegmentViewModel.uiState.collectAsState()
 
     // Track current map center and visible viewport radius for "Search This Area" button
     var mapCenterLatitude by remember { mutableStateOf(searchLatitude) }
@@ -470,7 +473,8 @@ fun MapScreenContent(
                 mapCenterLatitude = lat
                 mapCenterLongitude = lon
                 if (viewportRadius > 0) viewportRadiusMeters = viewportRadius
-            }
+            },
+            policySegments = segmentUiState.drawable
         )
 
         // "Search This Area" button (overlay)

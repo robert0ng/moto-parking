@@ -190,6 +190,13 @@ class SupabaseParkingDataSource(
             .decodeList()
     }
 
+    override suspend fun getAllPolicySegments(): List<PolicySegmentDto> {
+        return supabaseClient
+            .from("policy_segments_geojson")
+            .select()
+            .decodeList()
+    }
+
     override suspend fun canUserCheckIn(userId: String, spotId: String): Boolean {
         val params = buildJsonObject {
             put("p_user_id", userId)

@@ -27,9 +27,10 @@ enum class PlateType {
 
 @Serializable
 enum class DataSource {
-    GOVERNMENT,      // From TDX or other government sources
-    KML_IMPORT,      // Imported from Google Maps KML
-    USER_SUBMITTED   // Submitted by app users
+    GOVERNMENT,        // From TDX or other government sources
+    GOVERNMENT_PRESS,  // From government press releases / 路外停車場 announcements
+    KML_IMPORT,        // Imported from Google Maps KML
+    USER_SUBMITTED     // Submitted by app users
 }
 
 // Extension for display
@@ -40,6 +41,7 @@ fun PlateType.displayName(): String = when (this) {
 
 fun DataSource.displayName(): String = when (this) {
     DataSource.GOVERNMENT -> "政府資料"
+    DataSource.GOVERNMENT_PRESS -> "政府公告"
     DataSource.KML_IMPORT -> "社群資料"
     DataSource.USER_SUBMITTED -> "使用者提交"
 }

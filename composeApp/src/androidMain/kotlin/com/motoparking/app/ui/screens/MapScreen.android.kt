@@ -27,10 +27,15 @@ import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerComposable
 import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberMarkerState
+import com.google.android.gms.maps.model.Dash
+import com.google.android.gms.maps.model.Gap
 import com.motoparking.app.util.GeoUtils
 import com.motoparking.shared.domain.model.ParkingSpot
+import com.motoparking.shared.domain.model.PolicySegment
+import com.motoparking.shared.domain.model.SegmentSourceMethod
 import kotlinx.coroutines.flow.collectLatest
 import kotlin.math.ceil
 import kotlin.math.max
@@ -48,7 +53,8 @@ actual fun MapScreen(
     userLongitude: Double?,
     selectedRadius: Int,
     onSpotClick: (ParkingSpot) -> Unit,
-    onMapCenterChanged: ((latitude: Double, longitude: Double, viewportRadiusMeters: Int) -> Unit)?
+    onMapCenterChanged: ((latitude: Double, longitude: Double, viewportRadiusMeters: Int) -> Unit)?,
+    policySegments: List<PolicySegment>
 ) {
     val userLocation = if (userLatitude != null && userLongitude != null) {
         LatLng(userLatitude, userLongitude)
@@ -117,6 +123,30 @@ actual fun MapScreen(
             properties = mapProperties,
             uiSettings = mapUiSettings
         ) {
+            // Plate-policy road segments (Layer B). Skip null geometry / failed rows.
+            policySegments.forEach { segment ->
+                val geom = segment.geometry ?: return@forEach
+                if (segment.sourceMethod == SegmentSourceMethod.FAILED) return@forEach
+                if (geom.size < 2) return@forEach
+
+                val points = geom.map { LatLng(it.latitude, it.longitude) }
+                val isApprox = segment.sourceMethod == SegmentSourceMethod.STRAIGHT_LINE
+                val strokeColor = if (isApprox) {
+                    Color(0x800277BD) // ~50% alpha blue
+                } else {
+                    Color(0xFF0277BD) // solid blue
+                }
+
+                key("segment-${segment.id}") {
+                    Polyline(
+                        points = points,
+                        color = strokeColor,
+                        width = 8f,
+                        pattern = if (isApprox) listOf(Dash(20f), Gap(10f)) else null
+                    )
+                }
+            }
+
             // Add markers for each parking spot (use distinctBy to avoid duplicate keys)
             parkingSpots.distinctBy { it.id }.forEach { spot ->
                 key(spot.id) {

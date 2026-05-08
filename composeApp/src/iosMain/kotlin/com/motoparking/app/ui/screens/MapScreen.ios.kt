@@ -19,19 +19,33 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.interop.UIKitView
 import androidx.compose.ui.unit.dp
 import com.motoparking.shared.domain.model.ParkingSpot
+import com.motoparking.shared.domain.model.PolicySegment
+import com.motoparking.shared.domain.model.SegmentSourceMethod
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.allocArray
+import kotlinx.cinterop.get
+import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.useContents
+import platform.CoreLocation.CLLocationCoordinate2D
 import platform.CoreLocation.CLLocationCoordinate2DMake
 import platform.CoreGraphics.CGPointMake
 import platform.CoreGraphics.CGRectMake
 import platform.CoreGraphics.CGSizeMake
+import platform.Foundation.NSNumber
 import platform.MapKit.MKAnnotationProtocol
 import platform.MapKit.MKAnnotationView
 import platform.MapKit.MKCoordinateRegionMakeWithDistance
 import platform.MapKit.MKMapView
 import platform.MapKit.MKMapViewDelegateProtocol
+import platform.MapKit.MKOverlayProtocol
+import platform.MapKit.MKOverlayRenderer
 import platform.MapKit.MKPointAnnotation
+import platform.MapKit.MKPolyline
+import platform.MapKit.MKPolylineRenderer
 import platform.MapKit.MKUserLocation
+import platform.MapKit.addOverlay
+import platform.MapKit.overlays
+import platform.MapKit.removeOverlays
 import platform.UIKit.UIButton
 import platform.UIKit.UIButtonType
 import platform.UIKit.UIColor
@@ -100,6 +114,30 @@ private class MapViewDelegate(
         val annotation = annotationView.annotation ?: return
         if (annotation is MKUserLocation) return
         onCalloutTapped?.invoke(annotation, mapView)
+    }
+
+    override fun mapView(mapView: MKMapView, rendererForOverlay: MKOverlayProtocol): MKOverlayRenderer {
+        if (rendererForOverlay is MKPolyline) {
+            val renderer = MKPolylineRenderer(polyline = rendererForOverlay)
+            // Convention: polyline.title == "approx" means straight-line approximation.
+            val isApprox = rendererForOverlay.title == "approx"
+            // System blue (#007AFF) — manually constructed to avoid K/N binding issues
+            // with the UIColor.systemBlueColor class method.
+            val systemBlue = UIColor(red = 0.0, green = 122.0 / 255.0, blue = 1.0, alpha = 1.0)
+            if (isApprox) {
+                renderer.strokeColor = systemBlue.colorWithAlphaComponent(0.5)
+                renderer.lineWidth = 4.0
+                renderer.lineDashPattern = listOf(
+                    NSNumber(int = 10),
+                    NSNumber(int = 6)
+                )
+            } else {
+                renderer.strokeColor = systemBlue
+                renderer.lineWidth = 4.0
+            }
+            return renderer
+        }
+        return MKOverlayRenderer(overlay = rendererForOverlay)
     }
 
     override fun mapView(mapView: MKMapView, viewForAnnotation: MKAnnotationProtocol): MKAnnotationView? {
@@ -227,7 +265,8 @@ actual fun MapScreen(
     userLongitude: Double?,
     selectedRadius: Int,
     onSpotClick: (ParkingSpot) -> Unit,
-    onMapCenterChanged: ((latitude: Double, longitude: Double, viewportRadiusMeters: Int) -> Unit)?
+    onMapCenterChanged: ((latitude: Double, longitude: Double, viewportRadiusMeters: Int) -> Unit)?,
+    policySegments: List<PolicySegment>
 ) {
     val centerLatitude = userLatitude ?: DEFAULT_LATITUDE
     val centerLongitude = userLongitude ?: DEFAULT_LONGITUDE
@@ -243,6 +282,36 @@ actual fun MapScreen(
                 setCoordinate(CLLocationCoordinate2DMake(spot.latitude, spot.longitude))
                 setTitle(spot.name)
                 setSubtitle(spot.address)
+            }
+        }
+    }
+
+    // Build MKPolyline overlays for plate-policy segments (Layer B).
+    // Skip null-geometry / failed rows. Tag straight-line approximations via title="approx"
+    // so the delegate's renderer-for-overlay can style them dashed at half alpha.
+    val polylineOverlays = remember(policySegments) {
+        policySegments.mapNotNull { segment ->
+            val geom = segment.geometry ?: return@mapNotNull null
+            if (segment.sourceMethod == SegmentSourceMethod.FAILED) return@mapNotNull null
+            if (geom.size < 2) return@mapNotNull null
+
+            memScoped {
+                val coords = allocArray<CLLocationCoordinate2D>(geom.size)
+                for (i in geom.indices) {
+                    val c = geom[i]
+                    coords[i].latitude = c.latitude
+                    coords[i].longitude = c.longitude
+                }
+                val polyline = MKPolyline.polylineWithCoordinates(
+                    coords = coords,
+                    count = geom.size.toULong()
+                )
+                if (segment.sourceMethod == SegmentSourceMethod.STRAIGHT_LINE) {
+                    polyline.setTitle("approx")
+                } else {
+                    polyline.setTitle("solid")
+                }
+                polyline
             }
         }
     }
@@ -368,6 +437,21 @@ actual fun MapScreen(
                     // Add new annotations
                     annotationsWithSpots.forEach { (_, annotation) ->
                         mapView.addAnnotation(annotation)
+                    }
+                }
+
+                // Sync polyline overlays for plate-policy segments.
+                @Suppress("UNCHECKED_CAST")
+                val existingOverlays = mapView.overlays as List<MKOverlayProtocol>
+                val desiredOverlaySet = polylineOverlays.toSet()
+                @Suppress("UNCHECKED_CAST")
+                val existingOverlaySet = existingOverlays.toSet() as Set<MKOverlayProtocol>
+                if (existingOverlaySet != desiredOverlaySet) {
+                    if (existingOverlays.isNotEmpty()) {
+                        mapView.removeOverlays(existingOverlays)
+                    }
+                    polylineOverlays.forEach { polyline ->
+                        mapView.addOverlay(polyline)
                     }
                 }
             },

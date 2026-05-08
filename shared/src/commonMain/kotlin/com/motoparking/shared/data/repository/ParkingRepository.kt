@@ -2,10 +2,14 @@ package com.motoparking.shared.data.repository
 
 import com.motoparking.shared.data.remote.ParkingDataSource
 import com.motoparking.shared.data.remote.ParkingSpotDto
+import com.motoparking.shared.data.remote.PolicySegmentDto
 import com.motoparking.shared.data.remote.PolicyZoneDto
+import com.motoparking.shared.domain.model.LatLng
 import com.motoparking.shared.domain.model.ParkingSpot
 import com.motoparking.shared.domain.model.PlateType
+import com.motoparking.shared.domain.model.PolicySegment
 import com.motoparking.shared.domain.model.PolicyZone
+import com.motoparking.shared.domain.model.SegmentSourceMethod
 import kotlinx.datetime.LocalDate
 
 class ParkingRepository(
@@ -16,6 +20,9 @@ class ParkingRepository(
 
     // Cached policy zones (fetched once per session)
     private var policyZoneCache: List<PolicyZone>? = null
+
+    // Cached policy segments (fetched once per session)
+    private var policySegmentCache: List<PolicySegment>? = null
 
     /**
      * Fetch all parking spots
@@ -214,6 +221,16 @@ class ParkingRepository(
         return zones
     }
 
+    /**
+     * Fetch all plate-policy road segments (Layer B). Cached once per session.
+     */
+    suspend fun getAllPolicySegments(): List<PolicySegment> {
+        policySegmentCache?.let { return it }
+        val segments = dataSource.getAllPolicySegments().map { it.toDomain() }
+        policySegmentCache = segments
+        return segments
+    }
+
     fun findPoliciesForAddress(address: String, zones: List<PolicyZone>): List<PolicyZone> {
         val normAddr = address.replace("臺", "台")
         return zones.filter { zone ->
@@ -242,6 +259,35 @@ class ParkingRepository(
 
 // Extension function to convert DTO to domain model using the mapper
 private fun ParkingSpotDto.toDomain(): ParkingSpot = ParkingSpotMapper.toDomain(this)
+
+private fun PolicySegmentDto.toDomain(): PolicySegment = PolicySegment(
+    id = id,
+    zoneId = zoneId,
+    city = city,
+    district = district,
+    scope = scope,
+    plates = plates.mapNotNull { code ->
+        when (code.uppercase()) {
+            "YELLOW" -> PlateType.YELLOW
+            "RED" -> PlateType.RED
+            else -> null
+        }
+    },
+    effectiveDate = LocalDate.parse(effectiveDate),
+    feeDescription = feeDescription,
+    zoneSourceUrl = zoneSourceUrl,
+    zoneSourceLabel = zoneSourceLabel,
+    roadName = roadName,
+    fromRoad = fromRoad,
+    toRoad = toRoad,
+    sourceMethod = SegmentSourceMethod.parse(sourceMethod),
+    segmentSourceLabel = segmentSourceLabel,
+    notes = notes,
+    // GeoJSON coordinates are [lng, lat] per spec; swap to (lat, lng) here, exactly once.
+    geometry = geometry?.coordinates?.mapNotNull { pair ->
+        if (pair.size >= 2) LatLng(latitude = pair[1], longitude = pair[0]) else null
+    }
+)
 
 private fun PolicyZoneDto.toDomain(): PolicyZone = PolicyZone(
     id = id,

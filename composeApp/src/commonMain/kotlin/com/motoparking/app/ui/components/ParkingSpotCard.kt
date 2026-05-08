@@ -151,6 +151,7 @@ private fun PlateTypeBadge(plateType: PlateType) {
 private fun SourceBadge(source: DataSource) {
     val (text, color) = when (source) {
         DataSource.GOVERNMENT -> "政府資料" to MaterialTheme.colorScheme.primary
+        DataSource.GOVERNMENT_PRESS -> "政府新聞稿" to MaterialTheme.colorScheme.primary
         DataSource.KML_IMPORT -> "社群資料" to MaterialTheme.colorScheme.secondary
         DataSource.USER_SUBMITTED -> "使用者提交" to MaterialTheme.colorScheme.tertiary
     }
