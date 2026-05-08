@@ -2,14 +2,20 @@ package com.motoparking.shared.data.repository
 
 import com.motoparking.shared.data.remote.ParkingDataSource
 import com.motoparking.shared.data.remote.ParkingSpotDto
+import com.motoparking.shared.data.remote.PolicyZoneDto
 import com.motoparking.shared.domain.model.ParkingSpot
 import com.motoparking.shared.domain.model.PlateType
+import com.motoparking.shared.domain.model.PolicyZone
+import kotlinx.datetime.LocalDate
 
 class ParkingRepository(
     private val dataSource: ParkingDataSource
 ) {
     // In-memory cache for parking spots to avoid redundant API calls
     private val spotCache = mutableMapOf<String, ParkingSpot>()
+
+    // Cached policy zones (fetched once per session)
+    private var policyZoneCache: List<PolicyZone>? = null
 
     /**
      * Fetch all parking spots
@@ -200,7 +206,59 @@ class ParkingRepository(
             true // Allow check-in on error (fail open)
         }
     }
+
+    suspend fun getAllPolicyZones(): List<PolicyZone> {
+        policyZoneCache?.let { return it }
+        val zones = dataSource.getAllPolicyZones().map { it.toDomain() }
+        policyZoneCache = zones
+        return zones
+    }
+
+    fun findPoliciesForAddress(address: String, zones: List<PolicyZone>): List<PolicyZone> {
+        val normAddr = address.replace("臺", "台")
+        return zones.filter { zone ->
+            val cityFull = zone.city.replace("臺", "台")
+            val cityBase = cityFull.removeSuffix("市")
+            val cityMatches = cityBase.length >= 2 &&
+                (normAddr.contains(cityFull) || normAddr.contains(cityBase))
+
+            if (zone.district == null) {
+                cityMatches
+            } else {
+                val districtFull = zone.district
+                val districtBase = districtFull.removeSuffix("區")
+                // Distinctive district names (e.g. 板橋, 新莊) match alone.
+                // Short stripped names (e.g. 中, 西) require the full "中區" form
+                // and a city match to avoid false positives.
+                if (districtBase.length >= 2 && normAddr.contains(districtBase)) {
+                    true
+                } else {
+                    cityMatches && normAddr.contains(districtFull)
+                }
+            }
+        }.sortedBy { it.effectiveDate }
+    }
 }
 
 // Extension function to convert DTO to domain model using the mapper
 private fun ParkingSpotDto.toDomain(): ParkingSpot = ParkingSpotMapper.toDomain(this)
+
+private fun PolicyZoneDto.toDomain(): PolicyZone = PolicyZone(
+    id = id,
+    city = city,
+    district = district,
+    scope = scope,
+    plates = plates.mapNotNull { code ->
+        when (code.uppercase()) {
+            "YELLOW" -> PlateType.YELLOW
+            "RED" -> PlateType.RED
+            else -> null
+        }
+    },
+    effectiveDate = LocalDate.parse(effectiveDate),
+    feeDescription = feeDescription,
+    sourceUrl = sourceUrl,
+    sourceLabel = sourceLabel,
+    notes = notes
+)
+

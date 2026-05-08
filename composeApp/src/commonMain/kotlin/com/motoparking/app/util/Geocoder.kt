@@ -15,4 +15,15 @@ expect class Geocoder() {
         longitude: Double,
         onResult: (String?) -> Unit
     )
+
+    /**
+     * Get the administrative area (city + district) from coordinates,
+     * regardless of whether the point is on a named street. Used for
+     * matching against policy zones — returns a string like "新北市 板橋區".
+     */
+    fun getAdministrativeArea(
+        latitude: Double,
+        longitude: Double,
+        onResult: (String?) -> Unit
+    )
 }

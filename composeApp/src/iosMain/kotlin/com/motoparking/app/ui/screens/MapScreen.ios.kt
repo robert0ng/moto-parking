@@ -53,7 +53,7 @@ private const val DEFAULT_SPAN_METERS = 1000.0
  */
 @OptIn(ExperimentalForeignApi::class)
 private class MapViewDelegate(
-    private val onRegionChanged: (latitude: Double, longitude: Double) -> Unit,
+    private val onRegionChanged: (latitude: Double, longitude: Double, viewportRadiusMeters: Int) -> Unit,
     private val onAnnotationSelected: ((MKAnnotationProtocol, MKAnnotationView, MKMapView) -> Unit)? = null,
     private val onCalloutTapped: ((MKAnnotationProtocol, MKMapView) -> Unit)? = null
 ) : NSObject(), MKMapViewDelegateProtocol {
@@ -70,7 +70,18 @@ private class MapViewDelegate(
         if (!isProgrammaticChange) {
             val center = mapView.centerCoordinate
             center.useContents {
-                onRegionChanged(latitude, longitude)
+                val centerLat = latitude
+                val centerLon = longitude
+                val radius = mapView.region.useContents {
+                    val latMeters = span.latitudeDelta * 111_000.0 / 2.0
+                    val lonMeters =
+                        span.longitudeDelta * 111_000.0 *
+                            kotlin.math.cos(centerLat * kotlin.math.PI / 180.0) / 2.0
+                    kotlin.math.ceil(
+                        kotlin.math.sqrt(latMeters * latMeters + lonMeters * lonMeters)
+                    ).toInt()
+                }
+                onRegionChanged(centerLat, centerLon, radius)
             }
         }
         // Reset the flag after the region change completes
@@ -216,7 +227,7 @@ actual fun MapScreen(
     userLongitude: Double?,
     selectedRadius: Int,
     onSpotClick: (ParkingSpot) -> Unit,
-    onMapCenterChanged: ((latitude: Double, longitude: Double) -> Unit)?
+    onMapCenterChanged: ((latitude: Double, longitude: Double, viewportRadiusMeters: Int) -> Unit)?
 ) {
     val centerLatitude = userLatitude ?: DEFAULT_LATITUDE
     val centerLongitude = userLongitude ?: DEFAULT_LONGITUDE
@@ -254,8 +265,8 @@ actual fun MapScreen(
     val mapDelegate = remember {
         var delegate: MapViewDelegate? = null
         delegate = MapViewDelegate(
-            onRegionChanged = { lat, lon ->
-                currentOnMapCenterChanged?.invoke(lat, lon)
+            onRegionChanged = { lat, lon, radius ->
+                currentOnMapCenterChanged?.invoke(lat, lon, radius)
             },
             onAnnotationSelected = { annotation, annotationView, mapView ->
                 val del = delegate ?: return@MapViewDelegate

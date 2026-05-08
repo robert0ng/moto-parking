@@ -33,4 +33,28 @@ actual class Geocoder {
             onResult(locationName)
         }
     }
+
+    actual fun getAdministrativeArea(
+        latitude: Double,
+        longitude: Double,
+        onResult: (String?) -> Unit
+    ) {
+        val location = CLLocation(latitude = latitude, longitude = longitude)
+        geocoder.reverseGeocodeLocation(location) { placemarks, error ->
+            if (error != null || placemarks == null) {
+                onResult(null)
+                return@reverseGeocodeLocation
+            }
+            val placemark = placemarks.firstOrNull() as? CLPlacemark
+            val area = placemark?.let {
+                listOfNotNull(
+                    it.administrativeArea,
+                    it.subAdministrativeArea,
+                    it.locality,
+                    it.subLocality
+                ).distinct().joinToString(" ")
+            }?.takeIf { it.isNotBlank() }
+            onResult(area)
+        }
+    }
 }

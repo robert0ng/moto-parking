@@ -25,4 +25,5 @@ interface ParkingDataSource {
     suspend fun checkIn(userId: String, spotId: String)
     suspend fun getCheckInCount(spotId: String): Int
     suspend fun canUserCheckIn(userId: String, spotId: String): Boolean
+    suspend fun getAllPolicyZones(): List<PolicyZoneDto>
 }

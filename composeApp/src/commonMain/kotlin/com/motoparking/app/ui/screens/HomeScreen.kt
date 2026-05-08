@@ -9,9 +9,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.Place
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.Surface
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.TwoWheeler
 import androidx.compose.material3.Button
@@ -50,6 +56,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.motoparking.app.ui.components.ProfileDialog
 import com.motoparking.app.ui.viewmodels.AuthViewModel
 import com.motoparking.app.ui.viewmodels.HomeViewModel
+import com.motoparking.app.ui.viewmodels.PolicyViewModel
 import com.motoparking.app.util.DEFAULT_LOCATION
 import com.motoparking.app.util.Geocoder
 import com.motoparking.app.util.GeoUtils
@@ -65,7 +72,7 @@ import org.koin.compose.viewmodel.koinViewModel
 private const val SEARCH_AREA_THRESHOLD_METERS = 500.0
 
 enum class Screen {
-    MAP, LIST
+    MAP, LIST, POLICY
 }
 
 private fun formatRadius(meters: Int): String = when (meters) {
@@ -81,7 +88,8 @@ private fun formatRadius(meters: Int): String = when (meters) {
 fun HomeScreen(
     onSpotClick: (spotId: String) -> Unit = {},
     authViewModel: AuthViewModel = koinViewModel(),
-    homeViewModel: HomeViewModel = koinViewModel()
+    homeViewModel: HomeViewModel = koinViewModel(),
+    policyViewModel: PolicyViewModel = koinViewModel()
 ) {
     var currentScreen by rememberSaveable { mutableStateOf(Screen.LIST) }
     var selectedRadius by remember { mutableStateOf(1000) }
@@ -113,6 +121,18 @@ fun HomeScreen(
         } else null
     }
     val searchLocationName = searchLocationState.name
+
+    // Administrative area (city + district) for the search location, used only for
+    // policy banner matching. Independent of `searchLocationName` because the latter
+    // prefers street-level names which omit city/district.
+    var searchAdminArea by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(searchLocation) {
+        searchLocation?.let { loc ->
+            geocoder.getAdministrativeArea(loc.latitude, loc.longitude) { area ->
+                searchAdminArea = area
+            }
+        } ?: run { searchAdminArea = null }
+    }
 
     // When currentLocation first loads AND no persisted location, use current location
     LaunchedEffect(currentLocation, searchLocationState) {
@@ -214,6 +234,18 @@ fun HomeScreen(
 
     val radiusOptions = listOf(500, 1000, 2000, 5000)
 
+    // Policy banner: visible only when the searched location matches a city present in policy data
+    val policyState by policyViewModel.uiState.collectAsState()
+    val matchedPolicyCity = remember(searchAdminArea, policyState.rawZones) {
+        if (searchAdminArea.isNullOrBlank() || policyState.rawZones.isEmpty()) {
+            null
+        } else {
+            policyViewModel.findPoliciesForAddress(searchAdminArea!!)
+                .firstOrNull()?.city
+        }
+    }
+    val showPolicyBanner = matchedPolicyCity != null && currentScreen != Screen.POLICY
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
@@ -262,19 +294,33 @@ fun HomeScreen(
             )
         },
         bottomBar = {
-            NavigationBar {
-                NavigationBarItem(
-                    icon = { Icon(Icons.Default.Place, contentDescription = "地圖") },
-                    label = { Text("地圖") },
-                    selected = currentScreen == Screen.MAP,
-                    onClick = { currentScreen = Screen.MAP }
-                )
-                NavigationBarItem(
-                    icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "列表") },
-                    label = { Text("列表") },
-                    selected = currentScreen == Screen.LIST,
-                    onClick = { currentScreen = Screen.LIST }
-                )
+            Column {
+                if (showPolicyBanner && matchedPolicyCity != null) {
+                    PolicyBanner(
+                        city = matchedPolicyCity,
+                        onClick = { currentScreen = Screen.POLICY }
+                    )
+                }
+                NavigationBar {
+                    NavigationBarItem(
+                        icon = { Icon(Icons.Default.Place, contentDescription = "地圖") },
+                        label = { Text("地圖") },
+                        selected = currentScreen == Screen.MAP,
+                        onClick = { currentScreen = Screen.MAP }
+                    )
+                    NavigationBarItem(
+                        icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "列表") },
+                        label = { Text("列表") },
+                        selected = currentScreen == Screen.LIST,
+                        onClick = { currentScreen = Screen.LIST }
+                    )
+                    NavigationBarItem(
+                        icon = { Icon(Icons.Default.Campaign, contentDescription = "新政策") },
+                        label = { Text("新政策") },
+                        selected = currentScreen == Screen.POLICY,
+                        onClick = { currentScreen = Screen.POLICY }
+                    )
+                }
             }
         }
     ) { paddingValues ->
@@ -313,7 +359,15 @@ fun HomeScreen(
                         userLongitude = currentLocation?.longitude,
                         radiusMeters = selectedRadius,
                         onSpotClick = onSpotClick,
-                        onSearchArea = { lat, lon ->
+                        onSearchArea = { lat, lon, viewportRadius ->
+                            // Snap the viewport radius up to the nearest preset so the
+                            // search covers everything the user can see, and keep the
+                            // dropdown UI consistent.
+                            val snapped = radiusOptions.firstOrNull { it >= viewportRadius }
+                                ?: radiusOptions.last()
+                            if (snapped != selectedRadius) {
+                                selectedRadius = snapped
+                            }
                             homeViewModel.updateSearchLocation(lat, lon)
                             geocoder.getLocationName(lat, lon) { name ->
                                 homeViewModel.updateLocationName(name)
@@ -330,6 +384,9 @@ fun HomeScreen(
                         radiusMeters = selectedRadius,
                         onSpotClick = onSpotClick
                     )
+                }
+                currentScreen == Screen.POLICY -> {
+                    PolicyScreen()
                 }
             }
         }
@@ -378,13 +435,14 @@ fun MapScreenContent(
     userLongitude: Double? = null,
     radiusMeters: Int = 1000,
     onSpotClick: (spotId: String) -> Unit = {},
-    onSearchArea: ((latitude: Double, longitude: Double) -> Unit)? = null
+    onSearchArea: ((latitude: Double, longitude: Double, viewportRadiusMeters: Int) -> Unit)? = null
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    // Track current map center for "Search This Area" button
+    // Track current map center and visible viewport radius for "Search This Area" button
     var mapCenterLatitude by remember { mutableStateOf(searchLatitude) }
     var mapCenterLongitude by remember { mutableStateOf(searchLongitude) }
+    var viewportRadiusMeters by remember { mutableStateOf(radiusMeters) }
 
     // Calculate distance from search location to map center
     val distanceFromSearchLocation = remember(searchLatitude, searchLongitude, mapCenterLatitude, mapCenterLongitude) {
@@ -408,16 +466,19 @@ fun MapScreenContent(
             userLongitude = searchLongitude,
             selectedRadius = radiusMeters,
             onSpotClick = { spot -> onSpotClick(spot.id) },
-            onMapCenterChanged = { lat, lon ->
+            onMapCenterChanged = { lat, lon, viewportRadius ->
                 mapCenterLatitude = lat
                 mapCenterLongitude = lon
+                if (viewportRadius > 0) viewportRadiusMeters = viewportRadius
             }
         )
 
         // "Search This Area" button (overlay)
         if (showSearchAreaButton && onSearchArea != null && !uiState.isLoading) {
             Button(
-                onClick = { onSearchArea(mapCenterLatitude, mapCenterLongitude) },
+                onClick = {
+                    onSearchArea(mapCenterLatitude, mapCenterLongitude, viewportRadiusMeters)
+                },
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .padding(top = 16.dp),
@@ -468,6 +529,48 @@ fun MapScreenContent(
                     Text("載入失敗，點擊重試")
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun PolicyBanner(
+    city: String,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        color = MaterialTheme.colorScheme.tertiaryContainer,
+        contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.Campaign,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "${city}部分區域已開放大型重機停放",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = "查看",
+                style = MaterialTheme.typography.labelLarge
+            )
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+            )
         }
     }
 }

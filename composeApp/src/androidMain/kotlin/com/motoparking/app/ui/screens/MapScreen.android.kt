@@ -29,8 +29,11 @@ import com.google.maps.android.compose.MarkerComposable
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberMarkerState
+import com.motoparking.app.util.GeoUtils
 import com.motoparking.shared.domain.model.ParkingSpot
 import kotlinx.coroutines.flow.collectLatest
+import kotlin.math.ceil
+import kotlin.math.max
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
 
@@ -45,7 +48,7 @@ actual fun MapScreen(
     userLongitude: Double?,
     selectedRadius: Int,
     onSpotClick: (ParkingSpot) -> Unit,
-    onMapCenterChanged: ((latitude: Double, longitude: Double) -> Unit)?
+    onMapCenterChanged: ((latitude: Double, longitude: Double, viewportRadiusMeters: Int) -> Unit)?
 ) {
     val userLocation = if (userLatitude != null && userLongitude != null) {
         LatLng(userLatitude, userLongitude)
@@ -68,7 +71,22 @@ actual fun MapScreen(
                 .filter { !it } // Only emit when camera stops moving
                 .collectLatest {
                     val center = cameraPositionState.position.target
-                    onMapCenterChanged(center.latitude, center.longitude)
+                    val bounds = cameraPositionState.projection?.visibleRegion?.latLngBounds
+                    val radiusMeters = if (bounds != null) {
+                        // Distance from center to the furthest viewport corner.
+                        val toNe = GeoUtils.distanceInMeters(
+                            center.latitude, center.longitude,
+                            bounds.northeast.latitude, bounds.northeast.longitude
+                        )
+                        val toSw = GeoUtils.distanceInMeters(
+                            center.latitude, center.longitude,
+                            bounds.southwest.latitude, bounds.southwest.longitude
+                        )
+                        ceil(max(toNe, toSw)).toInt()
+                    } else {
+                        0
+                    }
+                    onMapCenterChanged(center.latitude, center.longitude, radiusMeters)
                 }
         }
     }

@@ -46,4 +46,40 @@ actual class Geocoder {
             }
         }
     }
+
+    actual fun getAdministrativeArea(
+        latitude: Double,
+        longitude: Double,
+        onResult: (String?) -> Unit
+    ) {
+        val context = AndroidContextProvider.getContext()
+        if (context == null) {
+            onResult(null)
+            return
+        }
+
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val geocoder = android.location.Geocoder(context, Locale.TAIWAN)
+                @Suppress("DEPRECATION")
+                val addresses: List<Address>? = geocoder.getFromLocation(latitude, longitude, 1)
+                val area = addresses?.firstOrNull()?.let { address ->
+                    listOfNotNull(
+                        address.adminArea,        // e.g. "新北市"
+                        address.subAdminArea,     // some Taiwanese geocoders place city here
+                        address.locality,         // e.g. "新北市"
+                        address.subLocality       // e.g. "板橋區"
+                    ).distinct().joinToString(" ")
+                }?.takeIf { it.isNotBlank() }
+
+                withContext(Dispatchers.Main) {
+                    onResult(area)
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    onResult(null)
+                }
+            }
+        }
+    }
 }

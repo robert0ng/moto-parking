@@ -15,7 +15,7 @@ expect fun MapScreen(
     userLongitude: Double?,
     selectedRadius: Int,
     onSpotClick: (ParkingSpot) -> Unit,
-    onMapCenterChanged: ((latitude: Double, longitude: Double) -> Unit)? = null
+    onMapCenterChanged: ((latitude: Double, longitude: Double, viewportRadiusMeters: Int) -> Unit)? = null
 )
 
 /**

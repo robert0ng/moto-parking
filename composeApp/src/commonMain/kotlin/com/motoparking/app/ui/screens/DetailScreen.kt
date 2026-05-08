@@ -28,7 +28,13 @@ import com.motoparking.app.util.openInMaps
 import com.motoparking.shared.domain.model.DataSource
 import com.motoparking.shared.domain.model.ParkingSpot
 import com.motoparking.shared.domain.model.PlateType
+import com.motoparking.shared.domain.model.PolicyZone
 import com.motoparking.shared.domain.model.displayName
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.platform.LocalUriHandler
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -158,7 +164,8 @@ fun DetailScreen(
                         onCheckIn = { viewModel.checkIn() },
                         checkInCount = uiState.checkInCount,
                         isCheckInLoading = uiState.isCheckInLoading,
-                        hasCheckedInToday = uiState.hasCheckedInToday
+                        hasCheckedInToday = uiState.hasCheckedInToday,
+                        applicablePolicies = uiState.applicablePolicies
                     )
                 }
             }
@@ -286,7 +293,8 @@ private fun SpotDetailContent(
     onCheckIn: () -> Unit,
     checkInCount: Int,
     isCheckInLoading: Boolean,
-    hasCheckedInToday: Boolean
+    hasCheckedInToday: Boolean,
+    applicablePolicies: List<PolicyZone>
 ) {
     val hasValidCoordinates = spot.hasValidCoordinates()
     Column(
@@ -393,6 +401,10 @@ private fun SpotDetailContent(
                 )
             }
 
+            if (applicablePolicies.isNotEmpty()) {
+                PolicyNoticeCard(policies = applicablePolicies)
+            }
+
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
             // Action Buttons
@@ -457,6 +469,65 @@ private fun InfoRow(
                 text = value,
                 style = MaterialTheme.typography.bodyLarge
             )
+        }
+    }
+}
+
+@Composable
+private fun PolicyNoticeCard(policies: List<PolicyZone>) {
+    val uriHandler = LocalUriHandler.current
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = "🛵 路邊機車格 — 大型重機",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onTertiaryContainer
+            )
+            // Show only the earliest matching policy (most-relevant: a district-level rule
+            // that's already in effect makes a citywide rule effective later redundant for this spot).
+            policies.take(1).forEach { policy ->
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    val zoneLabel = policy.district ?: "市"
+                    Text(
+                        text = "本$zoneLabel 自 ${policy.effectiveDate} 起開放大型重機停放",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer
+                    )
+                    policy.feeDescription?.takeIf { it.isNotBlank() }?.let { fee ->
+                        Text(
+                            text = fee,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                    }
+                    policy.sourceUrl?.takeIf { it.isNotBlank() }?.let { url ->
+                        TextButton(
+                            onClick = { uriHandler.openUri(url) },
+                            contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Text(
+                                text = policy.sourceLabel?.takeIf { it.isNotBlank() } ?: "查看公告",
+                                style = MaterialTheme.typography.labelMedium,
+                                modifier = Modifier.padding(start = 4.dp)
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }

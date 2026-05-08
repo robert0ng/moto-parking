@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.motoparking.shared.data.repository.AuthRepository
 import com.motoparking.shared.data.repository.ParkingRepository
 import com.motoparking.shared.domain.model.ParkingSpot
+import com.motoparking.shared.domain.model.PolicyZone
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,7 +25,8 @@ data class DetailUiState(
     val checkInError: String? = null,
     val hasCheckedInToday: Boolean = false,
     val requiresAuth: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val applicablePolicies: List<PolicyZone> = emptyList()
 )
 
 class DetailViewModel(
@@ -63,6 +65,11 @@ class DetailViewModel(
 
                 // Load check-in status
                 loadCheckInStatus(spotId)
+
+                // Load applicable policies (non-fatal — silent on failure)
+                if (spot != null) {
+                    loadApplicablePolicies(spot.address)
+                }
             } catch (e: Exception) {
                 // Check if spotId is still current (guard against race conditions)
                 if (currentSpotId != spotId) return@launch
@@ -250,6 +257,16 @@ class DetailViewModel(
             checkInCount = count,
             hasCheckedInToday = hasCheckedIn
         )
+    }
+
+    private suspend fun loadApplicablePolicies(address: String) {
+        try {
+            val zones = repository.getAllPolicyZones()
+            val matches = repository.findPoliciesForAddress(address, zones)
+            _uiState.value = _uiState.value.copy(applicablePolicies = matches)
+        } catch (_: Exception) {
+            // Non-fatal: leave list empty so the policy block simply doesn't render.
+        }
     }
 
     /**

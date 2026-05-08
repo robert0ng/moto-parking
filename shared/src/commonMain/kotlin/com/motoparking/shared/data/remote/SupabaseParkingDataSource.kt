@@ -4,6 +4,7 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
+import io.github.jan.supabase.postgrest.query.Order
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -178,6 +179,15 @@ class SupabaseParkingDataSource(
             function = "get_spot_check_in_count",
             parameters = params
         ).decodeSingle<Int>()
+    }
+
+    override suspend fun getAllPolicyZones(): List<PolicyZoneDto> {
+        return supabaseClient
+            .from("plate_policy_zones")
+            .select {
+                order("effective_date", Order.ASCENDING)
+            }
+            .decodeList()
     }
 
     override suspend fun canUserCheckIn(userId: String, spotId: String): Boolean {
